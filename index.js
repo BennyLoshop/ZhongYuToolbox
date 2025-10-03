@@ -4,6 +4,11 @@
     detectLocalProxy();
     // 每10秒检测一次
     setInterval(detectLocalProxy, 10000);
+    let breadcrumbStack = [
+        { id: "0", name: "根目录" }
+    ];
+    window.breadcrumbStack = breadcrumbStack;
+    updateBreadcrumb();
 
 
     var a = [
@@ -79,13 +84,7 @@
 
     }
     showGg(`<p><b>公告</b></p>
-<p>大家好，我是这个工具的作者。这是我在高一刚入学时创作的一个小作品。</p>
-<p>当初开发它的初衷，是为了方便自己和同学们更轻松地查看在线专栏等内容。</p>
-<p>然而，近期发现有人借此工具登录他人账号（甚至包括老师的账号）进行窥探。这种行为不仅违背了工具的初衷，也侵犯了他人的隐私。在此我郑重谴责，并呼吁大家不要效仿。</p>
-<p>引用 SXZOI 的一句话：“平板是用来学习的，不要被平板给玩了。”</p>
-<p>希望大家能够正确、合理地使用这个工具，共同营造一个积极向上的学习氛围。</p>
-<br/>
-<p>—— Loshop</p>
+<p>网站新域名上线：zytb.loshop.com.cn</p>
 `);
 })();
 
@@ -109,75 +108,81 @@ async function detectLocalProxy() {
     let isWindows = userAgent.indexOf("Windows") !== -1;
     let isAndroid = userAgent.indexOf("Android") !== -1;
 
-    // 状态变化时才弹窗或toast
     if (lastProxyStatus !== localOk) {
-        console.log("fds");
         lastProxyStatus = localOk;
+
+        const createToast = (id, title, message, btnHtml) => {
+            if (document.getElementById(id)) return;
+            let toastHtml = `
+            <div id="${id}" style="
+                position:fixed;
+                bottom:32px;
+                right:32px;
+                z-index:9999;
+                width:auto;
+                max-width:400px;
+                background:#333;
+                color:#fff;
+                padding:16px 24px;
+                border-radius:8px;
+                box-shadow:0 4px 12px rgba(0,0,0,0.5);
+                opacity:0.95;
+                font-size:clamp(14px, 3vw, 18px);
+                line-height:1.4;
+                box-sizing:border-box;
+                word-wrap:break-word;
+            ">
+                <div style="font-weight:bold;margin-bottom:8px;font-size:clamp(16px, 3.5vw, 20px);">${title}</div>
+                <div style="margin-bottom:12px;">${message}</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    ${btnHtml}
+                    <button style="
+                        padding:6px 12px;
+                        font-size:clamp(12px, 3vw, 16px);
+                        border:none;
+                        border-radius:4px;
+                        background:#555;
+                        color:#fff;
+                        cursor:pointer;
+                    " onclick="document.getElementById('${id}').remove()">关闭</button>
+                </div>
+            </div>`;
+            let div = document.createElement('div');
+            div.innerHTML = toastHtml;
+            document.body.appendChild(div);
+        };
+
         if (!localOk) {
-            if (isWindows && !document.getElementById('proxyDownloadModal')) {
-                let modalHtml = `
-                <div class="modal fade show" id="proxyDownloadModal" tabindex="-1" style="display:block;background:rgba(0,0,0,0.5);" aria-modal="true" role="dialog">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">加速插件未检测到</h5>
-                            </div>
-                            <div class="modal-body">
-                                <p>检测到您使用的是 Windows 系统，建议下载并运行加速插件以提升资源加载速度。</p>
-                                <p>不使用加速插件不会影响使用。</p>
-                                <a href="https://wumama.lanzouw.com/iG92334tbeeb" class="btn btn-primary">下载 tbHelperInstaller.exe</a>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('proxyDownloadModal').remove()">关闭</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-                let div = document.createElement('div');
-                div.innerHTML = modalHtml;
-                document.body.appendChild(div);
+            if (isWindows) {
+                createToast(
+                    'proxyToast',
+                    '加速插件未检测到',
+                    '检测到您使用的是 Windows 系统，建议下载并运行加速插件以提升资源加载速度。不使用加速插件不会影响使用。',
+                    '<a href="https://wumama.lanzouw.com/iG92334tbeeb" style="color:#fff;text-decoration:none;background:#007bff;padding:6px 12px;border-radius:4px;font-size:clamp(12px, 3vw, 16px);">下载 tbHelperInstaller.exe</a>'
+                );
             } else if (isAndroid) {
-                let modalHtml = `
-                <div class="modal fade show" id="proxyDownloadModal" tabindex="-1" style="display:block;background:rgba(0,0,0,0.5);" aria-modal="true" role="dialog">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">加速服务未检测到</h5>
-                            </div>
-                            <div class="modal-body">
-                                <p>检测到您使用的是安卓设备，建议下载并安装加速插件以提升资源加载速度。</p>
-                                <p>不使用加速插件不会影响使用。</p>
-                                <a href="/tbHelper.apk" class="btn btn-primary" download>下载 tbHelper.apk</a>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('proxyDownloadModal').remove()">关闭</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-                let div = document.createElement('div');
-                div.innerHTML = modalHtml;
-                document.body.appendChild(div);
+                createToast(
+                    'proxyToast',
+                    '加速服务未检测到',
+                    '检测到您使用的是安卓设备，建议下载并安装加速插件以提升资源加载速度。不使用加速插件不会影响使用。',
+                    '<a href="/tbHelper.apk" style="color:#fff;text-decoration:none;background:#007bff;padding:6px 12px;border-radius:4px;font-size:clamp(12px, 3vw, 16px);" download>下载 tbHelper.apk</a>'
+                );
             }
-        } else if (localOk) {
-            if (!document.getElementById('proxyToast')) {
-                let toastHtml = `
-                <div id="proxyToast" style="position:fixed;bottom:32px;right:32px;z-index:9999;min-width:180px;background:#333;color:#fff;padding:16px 24px;border-radius:8px;box-shadow:0 2px 8px #000;opacity:0.95;">
-                    本地加速服务已启用
-                </div>`;
-                let div = document.createElement('div');
-                div.innerHTML = toastHtml;
-                document.body.appendChild(div);
-                setTimeout(() => {
-                    let toast = document.getElementById('proxyToast');
-                    if (toast) toast.remove();
-                }, 3000);
-            }
-            let modal = document.getElementById('proxyDownloadModal');
-            if (modal) modal.remove();
+        } else {
+            createToast(
+                'proxyToast',
+                '本地加速服务已启用',
+                '',
+                ''
+            );
+            setTimeout(() => {
+                let toast = document.getElementById('proxyToast');
+                if (toast) toast.remove();
+            }, 3000);
         }
     }
 }
+
 
 
 /*ques_subject.onchange = function() {
@@ -718,64 +723,114 @@ function startTokenRefresh() {
         }
     }, 1000); // 每 1 秒检查一次
 }
-async function noteGetAll() {
-    $(".ball").fadeIn(100);
-    $('#note_search').fadeOut(100);
-    $("#noteList").html(""); // 清空
+let noteGetAllRunning = false;
+let currentPage = 1;      // 当前页码
+let pageSize = 20;        // 每页显示数量
+let allNotes = [];        // 存储解密后的所有笔记
 
-    let response = await fetch("https://zyapi.loshop.com.cn/CloudNotes/api/Notes/GetAll", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("token")}`
+async function noteGetAll(page = 1) {
+    if (noteGetAllRunning) return;
+    noteGetAllRunning = true;
+
+    try {
+        $(".ball").fadeIn(100);
+        $('#note_search').fadeOut(100);
+        $("#noteList2").html(""); // 清空
+
+        // 第一次加载才请求 API
+        if (allNotes.length === 0) {
+            let response = await fetch("https://zyapi.loshop.com.cn/CloudNotes/api/Notes/GetAll", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            if (response.status == 401) {
+                swal("身份失效，请重新登录");
+                return;
+            }
+
+            let data = await response.json();
+            data = JSON.parse(aesDecrypt(data.data));
+            let list = data.noteList;
+
+            // 只保留 type = 1 或 12
+            allNotes = list.filter(item => item.type == 1 || item.type == 12);
+            allNotes = shellsort(allNotes); // 按字母排序
         }
-    });
 
-    if (response.status == 401) {
-        swal("身份失效，请重新登录");
-        $(".ball").fadeOut(500);
-        return;
+        currentPage = page;
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageNotes = allNotes.slice(start, end);
+
+        pageNotes.forEach((item, i) => {
+            const template = `
+                <a onclick="if(downloading)swal('你已经在下载一个文件，耐心等待哦');else noteDownload('${item.fileId}','${item.fileName}')" 
+                   class="list-group-item list-group-item-action py-3 lh-tight a-note" 
+                   aria-current="true" 
+                   style="background:rgba(255,255,255,0) !important;">
+                    <div class="d-flex w-100 align-items-center justify-content-between">
+                        <strong class="note-name mb-1">${item.fileName}</strong>
+                        <small>${item.updateTime}</small>
+                    </div>
+                    <div class="col-10 mb-1 small">${item.fileId}</div>
+                </a>`;
+            $("#noteList2").append(template);
+        });
+
+        renderPagination1();
+    } catch (err) {
+        console.error("noteGetAll 执行出错:", err);
+    } finally {
+        $(".ball").fadeOut(100);
+        $("#ball_T").text("请稍候");
+        noteGetAllRunning = false;
     }
-
-    let data = await response.json();
-    data = JSON.parse(aesDecrypt(data.data));
-    let list = data.noteList;
-
-    // 只保留 type = 1 或 12
-    list = list.filter(item => item.type == 1 || item.type == 12);
-    list = shellsort(list);
-
-    // 总数
-    let total = list.length;
-
-    for (let i = 0; i < list.length; i++) {
-        let item = list[i];
-
-        // 更新进度提示
-        $("#ball_T").text(`加载中 ${i + 1}/${total}`);
-
-        var template = `
-            <a onclick="if(downloading)swal('你已经在下载一个文件，耐心等待哦');else noteDownload('${item.fileId}','${item.fileName}')" 
-               class="list-group-item list-group-item-action py-3 lh-tight a-note" 
-               aria-current="true" 
-               style="background:rgba(255,255,255,0) !important;">
-                <div class="d-flex w-100 align-items-center justify-content-between">
-                    <strong class="note-name mb-1">${item.fileName}</strong>
-                    <small>${item.updateTime}</small>
-                </div>
-                <div class="col-10 mb-1 small">${item.fileId}</div>
-            </a>`;
-
-        $("#noteList").append(template);
-
-        // 让浏览器有机会刷新 UI
-        await new Promise(r => setTimeout(r, 0));
-    }
-
-    $(".ball").fadeOut(100);
-    $('#note_search').fadeIn(100);
-    $("#ball_T").text("请稍候"); // 清空提示
 }
+
+// 渲染分页控件
+function renderPagination1() {
+    const totalPages = Math.ceil(allNotes.length / pageSize);
+    let html = `<nav class="mt-3"><ul class="pagination justify-content-center">`;
+
+    // 左箭头
+    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="noteGetAll(${currentPage - 1})">&laquo;</a>
+             </li>`;
+
+    // 省略前面页
+    if (currentPage > 5) {
+        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+
+    // 显示当前页附近的页码
+    const start = Math.max(1, currentPage - 4);
+    const end = Math.min(totalPages, currentPage + 4);
+
+    for (let i = start; i <= end; i++) {
+        html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="noteGetAll(${i})">${i}</a>
+                 </li>`;
+    }
+
+    // 省略后面页
+    if (currentPage + 4 < totalPages) {
+        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+
+    // 右箭头
+    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="noteGetAll(${currentPage + 1})">&raquo;</a>
+             </li>`;
+
+    html += `</ul></nav>`;
+    $("#noteList2").append(html);
+}
+
+
 
 
 async function noteDownload(fileId, name) {
@@ -905,7 +960,7 @@ async function noteDownload(fileId, name) {
                 // 页脚
                 pdf.setFontSize(8);
                 pdf.setTextColor(100);
-                let footerText = "https://gl.zytb.loshop.com.cn";
+                let footerText = "https://zytb.loshop.com.cn";
                 let textWidth = pdf.getTextWidth(footerText);
                 pdf.text(footerText, pageWidth - textWidth - 20, pageHeight - 20);
 
@@ -2481,3 +2536,114 @@ async function uploadFileBtn() {
         resultEl.textContent = "上传失败: " + e.message;
     }
 };
+
+
+// ============ 状态 ============
+
+
+// ============ 获取笔记列表 ============
+async function loadNotes(parentId = "0") {
+    const params = `parentid=${parentId}&isNoteNode=true`;
+    const encryptedParams = aesEncrypt(params);
+    const apiUrl = `https://zyapi.loshop.com.cn/special/GetByParentId?${encryptedParams}`;
+
+    try {
+        const res = await fetch(apiUrl, {
+            headers: {
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+        const json = await res.json();
+        if (json.code !== 0) {
+            console.error("获取笔记失败", json.msg);
+            return;
+        }
+
+        const dataStr = aesDecrypt(json.data);
+        const data = JSON.parse(dataStr);
+        renderNotes(data.noteList);
+    } catch (err) {
+        console.error("请求或解密出错", err);
+    }
+}
+
+// ============ 渲染笔记列表 ============
+// ============ 渲染笔记列表 ============
+function renderNotes(notes) {
+    const container = document.getElementById("noteList");
+    container.innerHTML = ""; // 清空
+
+    if (!notes || notes.length === 0) {
+        container.innerHTML = `<div class="text-center text-muted py-4">（此文件夹为空）</div>`;
+        return;
+    }
+
+    // ✅ 文件夹优先 + 名字排序
+    notes.sort((a, b) => {
+        if (a.type === 0 && b.type !== 0) return -1;
+        if (a.type !== 0 && b.type === 0) return 1;
+        return a.fileName.localeCompare(b.fileName, "zh-Hans-CN");
+    });
+
+    notes.forEach(note => {
+        const isFolder = note.type === 0;
+        const iconPath = isFolder ? "/folder.svg" : "/note.svg";
+
+        const item = document.createElement("a");
+        item.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-center";
+        item.href = "javascript:void(0)";
+
+        if (isFolder) {
+            item.onclick = () => enterFolder(note.fileId, note.fileName);
+        } else {
+            item.onclick = () => noteDownload(note.fileId, note.fileName);
+        }
+
+        item.innerHTML = `
+            <div class="d-flex align-items-center">
+                <img src="${iconPath}" alt="" style="width:20px;height:20px;margin-right:8px;">
+                <div>
+                    <strong>${note.fileName}</strong><br>
+                    <small class="text-muted">创建时间: ${note.createTime}</small>
+                </div>
+            </div>
+            <span class="badge bg-${isFolder ? 'secondary' : 'primary'} rounded-pill">
+                ${isFolder ? '文件夹' : '笔记'}
+            </span>
+        `;
+
+        container.appendChild(item);
+    });
+}
+
+// ============ 进入文件夹 ============
+function enterFolder(folderId, folderName) {
+    breadcrumbStack.push({ id: folderId, name: folderName });
+    updateBreadcrumb();
+    loadNotes(folderId);
+}
+
+// ============ 更新面包屑 ============
+function updateBreadcrumb() {
+    const nav = document.getElementById("breadcrumbNav");
+    nav.innerHTML = "";
+
+    breadcrumbStack.forEach((item, index) => {
+        const li = document.createElement("li");
+        li.className = `breadcrumb-item ${index === breadcrumbStack.length - 1 ? 'active' : ''}`;
+        li.textContent = item.name;
+        li.style.cursor = "pointer";
+        li.dataset.id = item.id;
+
+        if (index !== breadcrumbStack.length - 1) {
+            li.addEventListener("click", () => {
+                breadcrumbStack = breadcrumbStack.slice(0, index + 1);
+                updateBreadcrumb();
+                loadNotes(item.id);
+            });
+        }
+
+        nav.appendChild(li);
+    });
+}
+

@@ -164,6 +164,10 @@
                 onclick="noteGetAll()">云笔记</a>
         </li>
         <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="https://gl.zytb.loshop.com.cn/index.html#NoteDir"
+                onclick="loadNotes(0);">云笔记BETA</a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link" data-bs-toggle="tab" href="https://gl.zytb.loshop.com.cn/index.html#ZXZL"
                 onclick="zxzl_set_url()">在线专栏</a>
         </li>
@@ -264,44 +268,70 @@
                 </div>
             </div>
         </div>
-        <div class="tab-pane fade" id="Note">
-            <div class="container">
-                <div class="d-flex flex-column align-items-stretch flex-shrink-0 mt-5"
-                    style="width: 100%;background:rgba(255,255,255,0.8) !important;">
-                    <a class="justify-content-between d-flex align-items-center flex-shrink-0 p-3 link-dark text-decoration-none border-bottom"
-                        style="background:rgba(255,255,255,0.9) !important;">
-                        <div><img src="download.png" width="24" height="24">
-                            <use xlink:href="#bootstrap">
-                                <span class="fs-5 fw-semibold">云笔记</span>
-                            </use>
-                        </div>
-                        <div class="input-group mb-1" style="width:50%">
-                            <input id="note_search" type="text" class="form-control" placeholder="搜索笔记"
-                                aria-label="Recipient's username" aria-describedby="button-addon2"
-                                onkeyup='$(".a-note").each(function(){if($(this).find(".note-name").text().indexOf(note_search.value)==-1)$(this).addClass("d-none");else $(this).removeClass("d-none")})'>
-                        </div>
-                    </a>
-                    <div id="noteList" class="list-group border-bottom scrollarea"
-                        style="background:rgba(255,255,255,0) !important;"></div>
-                </div>
-            </div>
 
-            <!-- Button trigger modal -->
-            <!-- Modal -->
-            <div class="modal fade" id="downloadModal" tabindex="-1" data-bs-backdrop="static"
-                aria-labelledby="downloadModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="downloadModalLabel">下载笔记</h5>
+        <div class="tab-pane fade" id="NoteDir">
+            <div class="container">
+                <div class="d-flex flex-column align-items-stretch flex-shrink-0 mt-5" style="width: 100%"
+                    id="noteContainer">
+                    <ul class="nav nav-tabs" id="dirTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="dir-tab" data-bs-toggle="tab" data-bs-target="#dir"
+                                type="button" role="tab">文件夹</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="all-tab" data-bs-toggle="tab" data-bs-target="#all"
+                                type="button" role="tab" onclick="noteGetAll()">全部笔记</button>
+                        </li>
+                    </ul>
+
+                    <!-- tab content -->
+                    <div class="tab-content mt-3">
+                        <div class="tab-pane fade show active" id="dir" role="tabpanel">
+                            <!-- 面包屑导航 -->
+                            <nav aria-label="breadcrumb" class="mt-3">
+                                <ol class="breadcrumb" id="breadcrumbNav">
+                                    <li class="breadcrumb-item active" data-id="0" style="cursor: pointer;">根目录</li>
+                                </ol>
+                            </nav>
+                            <!-- 笔记列表 -->
+                            <div id="noteList" class="list-group list-group-flush"></div>
                         </div>
-                        <div id="download_msg" class="modal-body" style="word-break:break-all;white-space:pre-line;">
-                            服务器正在获取图片列表...
+                        <div class="tab-pane fade" id="all" role="tabpanel">
+                            <div class="d-flex flex-column align-items-stretch flex-shrink-0 mt-5"
+                                style="width: 100%;background:rgba(255,255,255,0.8) !important;">
+                                <a class="justify-content-between d-flex align-items-center flex-shrink-0 p-3 link-dark text-decoration-none border-bottom"
+                                    style="background:rgba(255,255,255,0.9) !important;">
+                                    <div><img src="download.png" width="24" height="24"><span
+                                            class="fs-5 fw-semibold">所有笔记</span></div>
+                                    <div class="input-group mb-1" style="width:50%">
+                                        <input id="note_search" type="text" class="form-control" placeholder="搜索笔记"
+                                            onkeyup='$(".a-note").each(function(){if($(this).find(".note-name").text().indexOf(note_search.value)==-1)$(this).addClass("d-none");else $(this).removeClass("d-none")})'>
+                                    </div>
+                                </a>
+                                <div id="noteList2" class="list-group border-bottom scrollarea"
+                                    style="background:rgba(255,255,255,0) !important;"></div>
+                                <div class="modal fade" id="downloadModal" tabindex="-1" data-bs-backdrop="static"
+                                    aria-labelledby="downloadModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="downloadModalLabel">下载笔记</h5>
+                                            </div>
+                                            <div id="download_msg" class="modal-body"
+                                                style="word-break:break-all;white-space:pre-line;">
+                                                服务器正在获取图片列表...
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+
         <div class="tab-pane fade" id="ZXZL" style="height:calc(100vh - 56px);overflow:hidden;">
             <div class="d-flex justify-content-end align-items-center" style="height:40px;">
                 <a id="zxzl_login" class="btn btn-outline-primary btn-sm mt-2 mb-2 me-3">
@@ -512,7 +542,8 @@
                                         <td></td>
                                         <td>
                                             <div style="float:right">
-                                                <a type="button" class="btn btn-success" href="http://sxz.school.zykj.org/navPage.html?apiHost=http%3A%2F%2Fsxz.api.zykj.org&schoolCode=sxz#/downloadPage">下载
+                                                <a type="button" class="btn btn-success"
+                                                    href="http://sxz.school.zykj.org/navPage.html?apiHost=http%3A%2F%2Fsxz.api.zykj.org&schoolCode=sxz#/downloadPage">下载
                                                 </a>
                                             </div>
                                         </td>
