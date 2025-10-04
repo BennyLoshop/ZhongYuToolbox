@@ -91,6 +91,7 @@
     }
     showGg(`<p><b>公告</b></p>
 <p>网站新域名上线：zytb.loshop.com.cn</p>
+<p>QQ群：1067807011</p>
 `);
 })();
 
