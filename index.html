@@ -160,12 +160,12 @@
                 onclick="loadPictures()">图库</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="https://gl.zytb.loshop.com.cn/index.html#Note"
-                onclick="noteGetAll()">云笔记</a>
+            <a class="nav-link" data-bs-toggle="tab" href="https://gl.zytb.loshop.com.cn/index.html#NoteDir"
+                onclick="loadNotes(0);">云笔记</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="https://gl.zytb.loshop.com.cn/index.html#NoteDir"
-                onclick="loadNotes(0);">云笔记BETA</a>
+            <a class="nav-link" data-bs-toggle="tab" href="https://gl.zytb.loshop.com.cn/index.html#exam"
+                onclick="fetchExams()">新测评</a>
         </li>
         <li class="nav-item">
             <a class="nav-link" data-bs-toggle="tab" href="https://gl.zytb.loshop.com.cn/index.html#ZXZL"
@@ -276,7 +276,7 @@
                     <ul class="nav nav-tabs" id="dirTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="dir-tab" data-bs-toggle="tab" data-bs-target="#dir"
-                                type="button" role="tab">文件夹</button>
+                                type="button" role="tab" onclick="loadNotes(0)">文件夹</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="all-tab" data-bs-toggle="tab" data-bs-target="#all"
@@ -636,6 +636,30 @@
                 </div>
             </div>
         </div>
+        <div class="tab-pane fade" id="exam">
+            <div class="container py-3">
+                <div id="examList" class="list-group mb-3"></div>
+                <div id="examPagination" class="d-flex align-items-center justify-content-center gap-2"></div>
+            </div>
+
+            <!-- 作业题目 Modal -->
+            <div class="modal fade" id="examModal" tabindex="-1" aria-labelledby="examModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="examModalLabel"></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="examModalBody">
+                            <div class="text-center py-3 text-muted">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <div class="mt-2">加载中...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="tab-pane fade" id="dev">
             <div class="container mt-5">
                 <div class="list-group mt-3" style="background:rgba(255,255,255,0.8)">
@@ -976,6 +1000,23 @@
                                     <div class="accordion-body">
                                         <ul>
                                             <li>修复了优客畅学大于20个课程显示不全问题</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading11">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#collapse11" aria-expanded="false" aria-controls="collapse11">
+                                        2025/10/4
+                                    </button>
+                                </h2>
+                                <div id="collapse11" class="accordion-collapse collapse" aria-labelledby="heading11"
+                                    data-bs-parent="#accordionExample">
+                                    <div class="accordion-body">
+                                        <ul>
+                                            <li>增加了云笔记文件夹视图。</li>
+                                            <li>增加了云笔记分页。</li>
                                         </ul>
                                     </div>
                                 </div>

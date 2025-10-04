@@ -10,6 +10,12 @@
     window.breadcrumbStack = breadcrumbStack;
     updateBreadcrumb();
 
+    let currentExamPage = 1;
+    const examPageSize = 10;
+    let totalExamCount = 0;
+    window.currentExamPage = currentExamPage;
+    window.examPageSize = examPageSize;
+    window.totalExamCount = totalExamCount;
 
     var a = [
         [4, "语文"],
@@ -161,12 +167,12 @@ async function detectLocalProxy() {
                     '<a href="https://wumama.lanzouw.com/iG92334tbeeb" style="color:#fff;text-decoration:none;background:#007bff;padding:6px 12px;border-radius:4px;font-size:clamp(12px, 3vw, 16px);">下载 tbHelperInstaller.exe</a>'
                 );
             } else if (isAndroid) {
-                createToast(
-                    'proxyToast',
-                    '加速服务未检测到',
-                    '检测到您使用的是安卓设备，建议下载并安装加速插件以提升资源加载速度。不使用加速插件不会影响使用。',
-                    '<a href="/tbHelper.apk" style="color:#fff;text-decoration:none;background:#007bff;padding:6px 12px;border-radius:4px;font-size:clamp(12px, 3vw, 16px);" download>下载 tbHelper.apk</a>'
-                );
+                // createToast(
+                //     'proxyToast',
+                //     '加速服务未检测到',
+                //     '检测到您使用的是安卓设备，建议下载并安装加速插件以提升资源加载速度。不使用加速插件不会影响使用。',
+                //     '<a href="/tbHelper.apk" style="color:#fff;text-decoration:none;background:#007bff;padding:6px 12px;border-radius:4px;font-size:clamp(12px, 3vw, 16px);" download>下载 tbHelper.apk</a>'
+                // );
             }
         } else {
             createToast(
@@ -776,7 +782,6 @@ async function noteGetAll(page = 1) {
                         <strong class="note-name mb-1">${item.fileName}</strong>
                         <small>${item.updateTime}</small>
                     </div>
-                    <div class="col-10 mb-1 small">${item.fileId}</div>
                 </a>`;
             $("#noteList2").append(template);
         });
@@ -792,43 +797,50 @@ async function noteGetAll(page = 1) {
 }
 
 // 渲染分页控件
+// 渲染分页控件（输入框 onchange 跳页）
 function renderPagination1() {
     const totalPages = Math.ceil(allNotes.length / pageSize);
-    let html = `<nav class="mt-3"><ul class="pagination justify-content-center">`;
+    if (totalPages <= 1) return;
 
-    // 左箭头
-    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                <a class="page-link" href="javascript:void(0)" onclick="noteGetAll(${currentPage - 1})">&laquo;</a>
-             </li>`;
+    let html = `
+    <div class="mt-3 d-flex justify-content-center align-items-center gap-3 flex-wrap">
+        <button class="btn btn-sm btn-outline-primary" 
+                ${currentPage === 1 ? 'disabled' : ''} 
+                onclick="noteGetAll(${currentPage - 1})">
+            上一页
+        </button>
 
-    // 省略前面页
-    if (currentPage > 5) {
-        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-    }
+        <div class="d-flex align-items-center gap-1">
+            <input type="number" id="pageInput" min="1" max="${totalPages}" value="${currentPage}" 
+                   class="form-control form-control-sm text-center" 
+                   style="width: 60px;" 
+                   onchange="goToPage()">
+            <span>/ ${totalPages}</span>
+        </div>
 
-    // 显示当前页附近的页码
-    const start = Math.max(1, currentPage - 4);
-    const end = Math.min(totalPages, currentPage + 4);
+        <button class="btn btn-sm btn-outline-primary" 
+                ${currentPage === totalPages ? 'disabled' : ''} 
+                onclick="noteGetAll(${currentPage + 1})">
+            下一页
+        </button>
+    </div>
+    `;
 
-    for (let i = start; i <= end; i++) {
-        html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
-                    <a class="page-link" href="javascript:void(0)" onclick="noteGetAll(${i})">${i}</a>
-                 </li>`;
-    }
-
-    // 省略后面页
-    if (currentPage + 4 < totalPages) {
-        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-    }
-
-    // 右箭头
-    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                <a class="page-link" href="javascript:void(0)" onclick="noteGetAll(${currentPage + 1})">&raquo;</a>
-             </li>`;
-
-    html += `</ul></nav>`;
     $("#noteList2").append(html);
 }
+
+// 处理页码跳转
+function goToPage() {
+    const input = document.getElementById('pageInput');
+    let page = parseInt(input.value);
+    const totalPages = Math.ceil(allNotes.length / pageSize);
+
+    if (isNaN(page) || page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+
+    noteGetAll(page);
+}
+
 
 
 
@@ -1193,8 +1205,9 @@ async function noteDownload2(fileId, name) {
     let list = JSON.parse(aesDecrypt(data.data)).resourceList;
     let count = [];
 
-    $("#downloadModal").modal('show');
-    $(download_msg).text("正在获取图片...");
+
+    $(".ball").fadeIn(100);
+    $("#ball_T").text("请稍候");
 
     ind = 0;
 
@@ -1205,7 +1218,7 @@ async function noteDownload2(fileId, name) {
             ? window.proxyBaseUrl + ossUrl
             : window.proxyBaseUrl + "http://friday-note.oss-cn-hangzhou.aliyuncs.com/" + ossUrl;
 
-        $(download_msg).text(`正在获取 ${parseInt(ind / list.length * 100)}%`);
+        $("#ball_T").text(`正在获取 ${parseInt(ind / list.length * 100)}%`);
         if (url.match(/\.(jpg|jpeg|png|webp)$/)) {
             let image = await fetch(url)
                 .then(response => response.blob())
@@ -1219,14 +1232,12 @@ async function noteDownload2(fileId, name) {
         type: "blob"
     }).then(function (content) {
 
-        $("#downloadModal").modal('hide');
-        $(download_msg).html(`获取完毕，下载启动<br/><button type="button" class="btn btn-warning" data-bs-dismiss="modal">关闭</button>`);
+        $("#ball_T").html(`获取完毕，下载启动<br/><button type="button" class="btn btn-warning" data-bs-dismiss="modal">关闭</button>`);
 
-        $("#downloadModal").modal('hide');
         download(URL.createObjectURL(content), name + '.zip')
-        $("#downloadModal").modal('hide');
         this.downloading = 0;
-        $("#downloadModal").modal('hide');
+        $("#ball_T").text("请稍候");
+        $(".ball").fadeOut(100);
     });
 }
 
@@ -2647,3 +2658,165 @@ function updateBreadcrumb() {
     });
 }
 
+
+
+
+async function fetchExams(page = 1) {
+    const token = localStorage.getItem("token");
+    if (!token) return alert("未找到 token，请先登录");
+
+    currentExamPage = page;
+    const skipCount = (currentExamPage - 1) * examPageSize;
+
+    const res = await fetch('https://zyapi.loshop.com.cn/api/services/app/Task/GetStudentTaskListAsync', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json; charset=UTF-8'
+        },
+        body: JSON.stringify({
+            maxResultCount: examPageSize,
+            skipCount: skipCount,
+            taskListType: 0
+        })
+    });
+    const data = await res.json();
+    const exams = data.result.items || [];
+    totalExamCount = data.result.totalCount || 0;
+
+    renderExamPage(exams);
+    renderExamPagination();
+}
+
+function renderExamPage(exams) {
+    const examList = document.getElementById('examList');
+    examList.innerHTML = '';
+
+    if (!exams.length) {
+        examList.innerHTML = `<div class="text-center text-muted py-3">暂无作业任务</div>`;
+        return;
+    }
+
+    exams.forEach(e => {
+        const btn = document.createElement('button');
+        btn.type = "button";
+        btn.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-center";
+        btn.setAttribute("data-bs-toggle", "modal");
+        btn.setAttribute("data-bs-target", "#examModal");
+        btn.innerHTML = `<span>${e.examName}</span>`;
+        btn.onclick = () => showExamQuestions(e.examName, e.examTaskId);
+        examList.appendChild(btn);
+    });
+}
+
+function renderExamPagination() {
+    const pagination = document.getElementById('examPagination');
+    const totalPages = Math.ceil(totalExamCount / examPageSize);
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+
+    pagination.innerHTML = `
+                <button class="btn btn-sm btn-outline-primary" ${currentExamPage === 1 ? 'disabled' : ''} onclick="fetchExams(${currentExamPage - 1})">上一页</button>
+                <div class="d-flex align-items-center gap-1">
+                    <input type="number" id="examPageInput" min="1" max="${totalPages}" value="${currentExamPage}" 
+                           class="form-control form-control-sm text-center" style="width:60px;" onchange="goToExamPage(${totalPages})">
+                    <span>/ ${totalPages}</span>
+                </div>
+                <button class="btn btn-sm btn-outline-primary" ${currentExamPage === totalPages ? 'disabled' : ''} onclick="fetchExams(${currentExamPage + 1})">下一页</button>
+            `;
+}
+
+function goToExamPage(totalPages) {
+    let page = parseInt(document.getElementById('examPageInput').value);
+    if (isNaN(page) || page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    fetchExams(page);
+}
+
+async function showExamQuestions(examName, examId) {
+    const token = localStorage.getItem("token");
+    const modalLabel = document.getElementById('examModalLabel');
+    const modalBody = document.getElementById('examModalBody');
+
+    modalLabel.textContent = `${examName}`;
+    modalBody.innerHTML = `<div class="text-center py-3 text-muted"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">加载中...</div></div>`;
+
+    const exam = await fetchExamTask(token, examId);
+    const questions = [];
+    let idx = 1;
+
+    for (const group of exam.result.groups || []) {
+        for (const q of group.questions) {
+            let content = await fetchQstAnswerView(q.id);
+
+            // 删除 toolBar
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(content, "text/html");
+            doc.querySelectorAll('.toolBar').forEach(el => el.remove());
+
+            // 题干
+            const stem = doc.querySelector('.stem')?.innerHTML || '';
+
+            // 答案
+            const answerEl = doc.querySelector('.answers');
+            let answerHTML = '';
+            if (answerEl) {
+                answerEl.querySelectorAll('h3').forEach(h => h.remove());
+                answerHTML = answerEl.innerHTML.trim();
+            }
+
+            // 解析 & 知识点
+            const analysisEls = doc.querySelectorAll('.analysis');
+            let explanationHTML = '', knowledgeHTML = '';
+            if (analysisEls.length > 0) {
+                const first = analysisEls[0];
+                first.querySelectorAll('h3').forEach(h => h.remove());
+                explanationHTML = first.innerHTML.trim();
+                if (analysisEls[1]) {
+                    const second = analysisEls[1];
+                    second.querySelectorAll('h3').forEach(h => h.remove());
+                    knowledgeHTML = second.innerHTML.trim();
+                }
+            }
+
+            questions.push({ number: idx, stem, answer: answerHTML, explanation: explanationHTML, knowledge: knowledgeHTML });
+            idx++;
+        }
+    }
+
+    if (!questions.length) {
+        modalBody.innerHTML = `<div class="text-center text-muted py-3">没有题目</div>`;
+        return;
+    }
+
+    let html = '<div class="container-fluid">';
+    questions.forEach(q => {
+        html += `
+                    <div class="card mb-3">
+                        <div class="card-header fw-bold">题目 ${q.number}</div>
+                        <div class="card-body">
+                            <div class="mb-2"><strong>题干:</strong><br>${q.stem}</div>
+                            <div class="mb-2"><strong>答案:</strong><br>${q.answer}</div>
+                            <div class="mb-2"><strong>解析:</strong><br>${q.explanation}</div>
+                            <div class="mb-2"><strong>知识点:</strong><br>${q.knowledge}</div>
+                        </div>
+                    </div>
+                `;
+    });
+    html += '</div>';
+    modalBody.innerHTML = html;
+}
+
+async function fetchExamTask(token, examId) {
+    const res = await fetch(`https://zyapi.loshop.com.cn/api/services/app/Task/GetExamTaskAsync?id=${examId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+async function fetchQstAnswerView(qstId) {
+    const res = await fetch(`https://zyapi.loshop.com.cn/Question/View/${qstId}?showAnalysis=true`);
+    return await res.text();
+}
