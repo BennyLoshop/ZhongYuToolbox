@@ -202,7 +202,7 @@
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#dev" onclick="loadRoot()">开发工具</a>
                 </li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#proxy">下载加速插件</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#Update">说明&致谢</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#Update" onclick="loadChangelog()">说明&致谢</a></li>
             </ul>
         </div>
     </div>
@@ -269,6 +269,10 @@
                             <button class="nav-link" id="all-tab" data-bs-toggle="tab" data-bs-target="#all"
                                 type="button" role="tab" onclick="noteGetAll()">全部笔记</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="search-tab" data-bs-toggle="tab" data-bs-target="#search"
+                                type="button" role="tab">搜索</button>
+                        </li>
                     </ul>
 
                     <!-- tab content -->
@@ -286,15 +290,6 @@
                         <div class="tab-pane fade" id="all" role="tabpanel">
                             <div class="d-flex flex-column align-items-stretch flex-shrink-0 mt-5"
                                 style="width: 100%;background:rgba(255,255,255,0.8) !important;">
-                                <a class="justify-content-between d-flex align-items-center flex-shrink-0 p-3 link-dark text-decoration-none border-bottom"
-                                    style="background:rgba(255,255,255,0.9) !important;">
-                                    <div><img src="download.png" width="24" height="24"><span
-                                            class="fs-5 fw-semibold">所有笔记</span></div>
-                                    <div class="input-group mb-1" style="width:50%">
-                                        <input id="note_search" type="text" class="form-control" placeholder="搜索笔记"
-                                            onkeyup='$(".a-note").each(function(){if($(this).find(".note-name").text().indexOf(note_search.value)==-1)$(this).addClass("d-none");else $(this).removeClass("d-none")})'>
-                                    </div>
-                                </a>
                                 <div id="noteList2" class="list-group border-bottom scrollarea"
                                     style="background:rgba(255,255,255,0) !important;"></div>
                                 <div class="modal fade" id="downloadModal" tabindex="-1" data-bs-backdrop="static"
@@ -313,6 +308,25 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="tab-pane fade" id="search" role="tabpanel">
+                            <div class="d-flex flex-column align-items-stretch flex-shrink-0 mt-5"
+                                style="width: 100%; background:rgba(255,255,255,0.8) !important;">
+                                <a class="justify-content-between d-flex align-items-center flex-shrink-0 p-3 link-dark text-decoration-none border-bottom"
+                                    style="background:rgba(255,255,255,0.9) !important;">
+                                    <div><span class="fs-5 fw-semibold">搜索笔记</span></div>
+                                    <div class="input-group mb-1" style="width:50%">
+                                        <input id="note_search_input" type="text" class="form-control"
+                                            placeholder="输入笔记名称搜索" onkeydown="if(event.key==='Enter') searchNotes()">
+                                        <button class="btn btn-primary" type="button"
+                                            onclick="searchNotes()">搜索</button>
+                                    </div>
+                                </a>
+                                <div id="noteSearchList" class="list-group border-bottom scrollarea"
+                                    style="background:rgba(255,255,255,0) !important;"></div>
+                                <div id="searchPagination"></div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -812,199 +826,8 @@
 
                     <div class="container mb-3">
                         <h1 class="text-primary">更新日志</h1>
-                        <div class="accordion" id="accordionExample">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="headingOne">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-                                        2024/10/4
-                                    </button>
-                                </h2>
-                                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
-                                    data-bs-parent="#accordionExample" style="">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>网站上线</li>
-                                        </ul>
-
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="headingTwo">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                                        2024/10/5
-                                    </button>
-                                </h2>
-                                <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo"
-                                    data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>增加App下载功能</li>
-                                            <li>优化在线专栏启动方式</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="headingThree">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapseThree" aria-expanded="false"
-                                        aria-controls="collapseThree">
-                                        2024/10/6
-                                    </button>
-                                </h2>
-                                <div id="collapseThree" class="accordion-collapse collapse"
-                                    aria-labelledby="headingThree" data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>增加优客畅学课程预览</li>
-                                            <li>实现优客畅学课程爬取</li>
-                                            <li>编写了中育自定义div与object的解析</li>
-                                            <li>新增了优客畅学源文件下载功能</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading4">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse4" aria-expanded="false" aria-controls="collapse4">
-                                        2024/10/7
-                                    </button>
-                                </h2>
-                                <div id="collapse4" class="accordion-collapse collapse" aria-labelledby="heading4"
-                                    data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>发现了罕见的exercise框，但是没有抓包数据没法处理</li>
-                                            <li>处理了image-block的大小问题</li>
-                                            <li>更改了附件显示方法:弹出窗口</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading5">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse5" aria-expanded="false" aria-controls="collapse5">
-                                        2024/10/8
-                                    </button>
-                                </h2>
-                                <div id="collapse5" class="accordion-collapse collapse" aria-labelledby="heading5"
-                                    data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>修复了随身答与优客畅学部分id重复BUG</li>
-                                            <li>修复了查看课程表的函数名称重复BUG</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading6">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse6" aria-expanded="false" aria-controls="collapse6">
-                                        2024/10/10
-                                    </button>
-                                </h2>
-                                <div id="collapse6" class="accordion-collapse collapse" aria-labelledby="heading6"
-                                    data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>优化了渲染机制</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading7">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse7" aria-expanded="false" aria-controls="collapse7">
-                                        2025/8/26
-                                    </button>
-                                </h2>
-                                <div id="collapse7" class="accordion-collapse collapse" aria-labelledby="heading7"
-                                    data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>修复了奇奇怪怪的api问题</li>
-                                            <li>增加了对图片的代理</li>
-                                            <li>增加了(不知道为什么)在网站登录的非学生账号的提示</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading8">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse8" aria-expanded="false" aria-controls="collapse8">
-                                        2025/9/13
-                                    </button>
-                                </h2>
-                                <div id="collapse8" class="accordion-collapse collapse" aria-labelledby="heading8"
-                                    data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>增加了图库查看</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading9">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse9" aria-expanded="false" aria-controls="collapse9">
-                                        2025/9/14
-                                    </button>
-                                </h2>
-                                <div id="collapse9" class="accordion-collapse collapse" aria-labelledby="heading9"
-                                    data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>增加了开发工具-OSS上传</li>
-                                            <li>设置了令牌失效自动尝试续期机制</li>
-                                            <li>在线专栏适配的移动端下载和预览</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading10">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse10" aria-expanded="false" aria-controls="collapse10">
-                                        2025/9/20
-                                    </button>
-                                </h2>
-                                <div id="collapse10" class="accordion-collapse collapse" aria-labelledby="heading10"
-                                    data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>修复了优客畅学大于20个课程显示不全问题</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading11">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse11" aria-expanded="false" aria-controls="collapse11">
-                                        2025/10/4
-                                    </button>
-                                </h2>
-                                <div id="collapse11" class="accordion-collapse collapse" aria-labelledby="heading11"
-                                    data-bs-parent="#accordionExample">
-                                    <div class="accordion-body">
-                                        <ul>
-                                            <li>增加了云笔记文件夹视图。</li>
-                                            <li>增加了云笔记分页。</li>
-                                            <li>增加了新测评功能。</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="accordion" id="accordionExample"></div>
+                        
                     </div>
                 </div>
             </div>

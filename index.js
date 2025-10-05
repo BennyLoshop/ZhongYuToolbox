@@ -17,6 +17,19 @@
     window.examPageSize = examPageSize;
     window.totalExamCount = totalExamCount;
 
+
+    let searchNotesRunning = false;
+    let searchCurrentPage = 1;
+    let searchPageSize = 20;
+    let searchResults = [];
+    let searchKeyword = "";
+    window.searchNotesRunning = searchNotesRunning;
+    window.searchCurrentPage = searchCurrentPage;
+    window.searchPageSize = searchPageSize;
+    window.searchResults = searchResults;
+    window.searchKeyword = searchKeyword;
+
+
     var a = [
         [4, "语文"],
         [5, "数学"],
@@ -2820,4 +2833,177 @@ async function fetchExamTask(token, examId) {
 async function fetchQstAnswerView(qstId) {
     const res = await fetch(`https://zyapi.loshop.com.cn/Question/View/${qstId}?showAnalysis=true`);
     return await res.text();
+}
+
+
+
+// 调用 /special/Search API 搜索
+async function searchNotes(page = 1) {
+    if (searchNotesRunning) return;
+    searchNotesRunning = true;
+    searchKeyword = document.getElementById("note_search_input").value.trim();
+    if (!searchKeyword) return alert("请输入搜索关键词");
+
+    $("#noteSearchList").html("");
+    $("#searchPagination").html("");
+
+    try {
+        // 构造完整 query 字符串
+        const query = `fileName=${searchKeyword}`;
+        const encryptedQuery = aesEncrypt(query);
+
+        // 直接把加密字符串放在 ? 后面
+        const url = `https://zyapi.loshop.com.cn/special/Search?${encryptedQuery}`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+
+        if (response.status === 401) {
+            swal("身份失效，请重新登录");
+            return;
+        }
+
+        let data = await response.json();
+        data = JSON.parse(aesDecrypt(data.data));
+        let list = data.noteList || [];
+
+        // 只保留 type = 1 或 12
+        searchResults = list.filter(item => item.type == 1 || item.type == 12);
+        searchResults = shellsort(searchResults); // 按字母排序
+        searchCurrentPage = page;
+
+        renderSearchResults();
+    } catch (err) {
+        console.error("searchNotes 出错:", err);
+    } finally {
+        searchNotesRunning = false;
+    }
+}
+
+function renderSearchResults() {
+    const $list = $("#noteSearchList");
+    if ($list.length === 0) {
+        console.warn("#noteSearchList 不存在");
+        return;
+    }
+
+    const start = (searchCurrentPage - 1) * searchPageSize;
+    const end = start + searchPageSize;
+    const pageNotes = searchResults.slice(start, end);
+
+    console.log("pageNotes:", pageNotes);
+
+    $list.html(""); // 先清空
+
+    if (pageNotes.length === 0) {
+        $list.html('<div class="text-center p-3">没有找到笔记</div>');
+        $("#searchPagination").html("");
+        return;
+    }
+
+    pageNotes.forEach(item => {
+        const template = `
+        <a onclick="if(downloading)swal('你已经在下载一个文件，耐心等待哦');else noteDownload('${item.fileId}','${item.fileName}')"
+           class="list-group-item list-group-item-action py-3 lh-tight a-note"
+           aria-current="true" 
+           style="background:rgba(255,255,255,0) !important;">
+            <div class="d-flex w-100 align-items-center justify-content-between">
+                <strong class="note-name mb-1">${item.fileName}</strong>
+                <small>${item.updateTime}</small>
+            </div>
+        </a>`;
+        $list.append(template);
+    });
+
+    renderSearchPagination();
+}
+
+
+function renderSearchPagination() {
+    const totalPages = Math.ceil(searchResults.length / searchPageSize);
+    if (totalPages <= 1) return;
+
+    let html = `
+    <div class="mt-3 d-flex justify-content-center align-items-center gap-3 flex-wrap">
+        <button class="btn btn-sm btn-outline-primary"
+                ${searchCurrentPage === 1 ? 'disabled' : ''}
+                onclick="searchNotes(${searchCurrentPage - 1})">
+            上一页
+        </button>
+
+        <div class="d-flex align-items-center gap-1">
+            <input type="number" id="searchPageInput" min="1" max="${totalPages}" value="${searchCurrentPage}"
+                   class="form-control form-control-sm text-center"
+                   style="width: 60px;"
+                   onchange="goToSearchPage()">
+            <span>/ ${totalPages}</span>
+        </div>
+
+        <button class="btn btn-sm btn-outline-primary"
+                ${searchCurrentPage === totalPages ? 'disabled' : ''}
+                onclick="searchNotes(${searchCurrentPage + 1})">
+            下一页
+        </button>
+    </div>`;
+
+    $("#searchPagination").html(html);
+}
+
+function goToSearchPage() {
+    let page = parseInt(document.getElementById('searchPageInput').value);
+    const totalPages = Math.ceil(searchResults.length / searchPageSize);
+    if (isNaN(page) || page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    searchNotes(page);
+}
+function renderChangelog(data) {
+    const $accordion = $("#accordionExample");
+    $accordion.html(""); // 清空原有内容
+
+    // 可选：按日期倒序排列
+    data.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    data.forEach((entry, index) => {
+        const collapseId = "collapse" + index;
+        const headingId = "heading" + index;
+
+        const itemsHtml = entry.items.map(item => `<li>${item}</li>`).join("");
+
+        const accordionItem = `
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="${headingId}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
+                    ${entry.date}
+                </button>
+            </h2>
+            <div id="${collapseId}" class="accordion-collapse collapse" aria-labelledby="${headingId}"
+                 data-bs-parent="#accordionExample">
+                <div class="accordion-body">
+                    <ul>
+                        ${itemsHtml}
+                    </ul>
+                </div>
+            </div>
+        </div>`;
+        
+        $accordion.append(accordionItem);
+    });
+}
+
+async function loadChangelog() {
+    try {
+        const res = await fetch("update.json");
+        if (!res.ok) throw new Error("无法获取更新日志");
+        const data = await res.json();
+        renderChangelog(data);
+    } catch (err) {
+        console.error("加载更新日志失败:", err);
+        $("#accordionExample").html('<div class="text-center text-muted py-3">无法加载更新日志</div>');
+    }  
 }
