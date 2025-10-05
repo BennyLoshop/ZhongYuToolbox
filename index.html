@@ -9,7 +9,6 @@
     <link id=theme rel="stylesheet" href="bootswatch.min.css">
     <link rel="stylesheet" href="DPlayer.min.css">
     <script src="jszip.min.js"></script>
-    <script src="bootstrap2.bundle.min.js"></script>
     <script src="bootstrap.bundle.min.js"></script>
     <script src="jquery.min.js"></script>
     <script src="aliyun-oss-sdk.min.js"></script>
@@ -141,6 +140,10 @@
             font-weight: bolder;
             /*设置文字宽度*/
         }
+
+        .navbar .container-fluid {
+            justify-content: flex-start;
+        }
     </style>
     <script>
         $(".ball").fadeOut(5);
@@ -148,7 +151,54 @@
     <div id="bg"
         style="z-index:-1;filter:brightness(60%);position:fixed;top:0;left:0;width:100%;height:100%;background: center url(bg3.jpg);background-size:cover">
     </div>
+    <nav class="navbar navbar-dark bg-primary fixed-top">
+        <div class="container-fluid d-flex align-items-center">
+            <!-- 汉堡按钮 -->
+            <button class="navbar-toggler me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu"
+                aria-controls="sidebarMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
+            <!-- 标题紧跟在按钮右边 -->
+            <a class="navbar-brand" href="#">中育ToolBox</a>
+        </div>
+    </nav>
+
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel"
+        data-bs-backdrop="true" data-bs-scroll="false">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="sidebarMenuLabel">功能菜单</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <ul class="nav nav-pills flex-column">
+                <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#Login" id="T_login">登录</a>
+                </li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#picture"
+                        onclick="loadPictures()">图库</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#NoteDir"
+                        onclick="loadNotes(0)">云笔记</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#exam"
+                        onclick="fetchExams()">新测评</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#ZXZL"
+                        onclick="zxzl_set_url()">在线专栏</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#Mistake"
+                        onclick="mistakeInit()">错题本</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#question"
+                        onclick="quoraInit()">随身答</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#apps">下载应用</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#lesson2" onclick="show_lesson()"
+                        id="lesson-tab">优客畅学</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#advance"
+                        onclick="reload_token()">高级选项</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#dev" onclick="loadRoot()">开发工具</a>
+                </li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#proxy">下载加速插件</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#Update">说明&致谢</a></li>
+            </ul>
+        </div>
+    </div>
 
     <ul class="nav nav-tabs">
         <li class="nav-item">
@@ -201,24 +251,6 @@
             <a class="nav-link" data-bs-toggle="tab" href="https://gl.zytb.loshop.com.cn/index.html#Update">说明&致谢</a>
         </li>
     </ul>
-    <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="offcanvasExampleLabel">镜像站列表</h5>
-            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body">
-            <div>
-                为防止本站服务器故障，本站共有3个镜像站。
-            </div>
-            <p></p>
-            <div class="list-group">
-                <a class="list-group-item list-group-item-action" href="http://zytb.loshop.com.cn">主站</a>
-                <a class="list-group-item list-group-item-action" href="http://gh.zytb.loshop.com.cn">Github Pages</a>
-                <a class="list-group-item list-group-item-action" href="https://gl.zytb.loshop.com.cn/index.html">Gitlab
-                    Pages</a>
-            </div>
-        </div>
-    </div>
     <div id="myTabContent" class="tab-content">
         <div class="tab-pane fade active show" id="Login">
             <div class="container">
@@ -820,11 +852,6 @@
                             <br>
                             开发：
                             Loshop
-                            <a class="btn btn-primary" data-bs-toggle="offcanvas"
-                                href="https://gl.zytb.loshop.com.cn/index.html#offcanvasExample" role="button"
-                                aria-controls="offcanvasExample">
-                                镜像站列表
-                            </a>
                         </div>
                     </div>
 

@@ -11,7 +11,7 @@
     updateBreadcrumb();
 
     let currentExamPage = 1;
-    const examPageSize = 10;
+    const examPageSize = 20;
     let totalExamCount = 0;
     window.currentExamPage = currentExamPage;
     window.examPageSize = examPageSize;
