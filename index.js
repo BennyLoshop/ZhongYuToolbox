@@ -502,13 +502,11 @@ function showGg(str) {
     };
 }
 let quesSkip = 0;
-const quesTake = 20;
+const quesTake = 24;
 let quesLoading = false;
 let quesAllLoaded = false;
 let quesParams = {};  // 保存当前的查询条件
-
-// 点击查询按钮
-ques_query.onclick = async function () {
+async function ques_query() {
     quesSkip = 0;
     quesAllLoaded = false;
     $(ques_list).html("");
@@ -525,7 +523,7 @@ ques_query.onclick = async function () {
     if (subject !== '-1') quesParams.topicId = subject;
 
     await loadMoreQuestions();
-};
+}
 
 // 加载一页数据
 async function loadMoreQuestions() {
@@ -552,25 +550,34 @@ async function loadMoreQuestions() {
         return;
     }
 
-    data.forEach((item, idx) => {
-        const tb = $(`
-            <tr class="table" style="background-color: rgba(255,255,255,0.8) !important; cursor:pointer;">
-                <th scope="row">${quesSkip + idx + 1}</th>
-                <td>
-                    <img src="${item.askUserPhoto || "https://s4.anilist.co/file/anilistcdn/user/avatar/large/default.png"}" 
-                         class="avatar">
-                    ${item.askUserName}
-                </td>
-                <td>${item.summary}</td>
-                <td>${item.updateTime}</td>
-            </tr>`);
+    data.forEach((item) => {
+        const col = $(`
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="ques-card card h-100" 
+                style="cursor:pointer; background:rgba(255,255,255,0.9); box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                <div class="card-body d-flex align-items-center mb-2">
+                    <img src="${item.askUserPhoto || 'https://s4.anilist.co/file/anilistcdn/user/avatar/large/default.png'}" 
+                        class="avatar me-2" 
+                        style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+                    <div class="overflow-hidden" style="white-space:nowrap;text-overflow:ellipsis;">
+                        <div class="fw-bold">${item.askUserName}</div>
+                        <div class="text-secondary small">${item.summary}</div>
+                    </div>
+                </div>
+                <div class="card-img-container" style="max-height:250px; overflow:hidden;">
+                    <img src="${item.snapshot}" class="card-img-bottom w-100" style="object-fit:cover;">
+                </div>
+            </div>
+        </div>
+    `);
 
-        tb.data("snap", item.snapshot);
-        tb.data("id", item.id);
-        tb.click(() => previewQuestion(item.id));
+        col.find('.ques-card').data("id", item.id);
+        col.find('.ques-card').click(() => previewQuestion(item.id));
 
-        $(ques_list).append(tb);
+        $(ques_list).append(col);
     });
+
+
 
     quesSkip += data.length;
     if (data.length < quesTake) {
@@ -638,7 +645,7 @@ ques_download.onclick = function () {
     download($('.carousel-item.active')[0].dataset.link, 'test.zip')
 };
 
-mistake_query.onclick = async function () {
+async function mistake_query() {
     var subject = $(mistake_subject).val();
     let data = await fetch(`https://zyapi.loshop.com.cn/api/services/app/MistakeBook/SearchMistakeQstItemsAsync`, {
         method: "POST",
@@ -672,26 +679,69 @@ mistake_query.onclick = async function () {
                 </tr>`)
         tb.data("id", data[i].id);
         tb.click(async function () {
-            let data = await fetch(`https://zyapi.loshop.com.cn/api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync?itemId=` + $(this).data("id"), {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${localStorage.getItem("token")}`
-                },
-            })
-                .then(response => response.json());
-            data = data.result;
-            if (!data) return;
-            let noteSrc = data.note;
-            if (!noteSrc) {
-                swal("无笔记");
-                return;
+            try {
+                // 获取题目详情
+                let res = await fetch(`https://zyapi.loshop.com.cn/api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync?itemId=` + $(this).data("id"), {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem("token")}`
+                    },
+                });
+                let detail = await res.json();
+                detail = detail.result;
+                if (!detail) return;
+
+                let noteSrc = detail.note;
+                if (!noteSrc) {
+                    swal("无笔记");
+                    return;
+                }
+
+                // 🔸 使用 proxyBaseUrl 通过 fetch 下载 zip 文件
+                const zipUrl = window.proxyBaseUrl + noteSrc;
+                const zipResponse = await fetch(zipUrl);
+                if (!zipResponse.ok) {
+                    swal("下载失败");
+                    return;
+                }
+
+                const zipBlob = await zipResponse.blob();
+
+                // 🔸 用 JSZip 解压
+                const zip = await JSZip.loadAsync(zipBlob);
+
+                // 🔸 找到 screenshot.png（不确定具体路径，所以遍历）
+                let screenshotFile = null;
+                zip.forEach((relativePath, zipEntry) => {
+                    if (relativePath.toLowerCase().endsWith("screenshot.png")) {
+                        screenshotFile = zipEntry;
+                    }
+                });
+
+                if (!screenshotFile) {
+                    swal("未找到 screenshot.png");
+                    return;
+                }
+
+                // 🔸 转成 base64 data URL
+                const screenshotData = await screenshotFile.async("base64");
+                const screenshotUrl = "data:image/png;base64," + screenshotData;
+
+                // 🔸 Modal 展示图片
+                $("#screenshotImg").attr("src", screenshotUrl);
+                $("#screenshotModal").modal("show");
+
+            } catch (err) {
+                console.error(err);
+                swal("出现错误");
             }
-            download(noteSrc);
-        })
+        });
+
         $(mistake_list).append(tb);
     }
 }
+//mistake_query.onclick = mistake_query;
 
 var downloading = 0,
     ques_focus,
@@ -1395,10 +1445,10 @@ async function quoraInit() {
         }
     }).then(response => response.json());
     data = data.result;
-    $(ques_topic).html(`<option value="-1">请选择</option>`);
     for (i in data) {
         $(ques_topic).append(`<option value="${data[i].id}">${data[i].name}</option>`)
     }
+    ques_query();
 }
 
 async function mistakeInit() {
@@ -1414,6 +1464,7 @@ async function mistakeInit() {
     for (i in data) {
         $(mistake_subject).append(`<option value="${data[i].id}">${data[i].topic.content}</option>`)
     }
+    mistake_query();
 }
 
 
@@ -2832,6 +2883,7 @@ function renderExamPage(exams) {
         btn.setAttribute("data-bs-target", "#examModal");
         btn.innerHTML = `<span>${e.examName}</span>`;
         btn.onclick = () => showExamQuestions(e.examName, e.examTaskId);
+        if (e.examState == 2) { btn.classList.add('disabled'); }
         examList.appendChild(btn);
     });
 }

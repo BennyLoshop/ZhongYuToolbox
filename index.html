@@ -96,6 +96,7 @@
             animation-delay: 0.48s;
         }
 
+
         @keyframes move {
 
             /*创建动画*/
@@ -380,10 +381,9 @@
             <div class="container mt-5">
                 <div class="input-group mb-3">
                     <label class="input-group-text" for="inputGroupSelect01">学科</label>
-                    <select id="mistake_subject" class="form-select">
+                    <select id="mistake_subject" class="form-select" onchange="mistake_query()">
                         <option value="-1">请选择</option>
                     </select>
-                    <button id="mistake_query" class="btn btn-info" type="button">确认</button>
                 </div>
                 <table class="table table-hover" style="background:rgba(255,255,255,0.8) !important;">
                     <thead>
@@ -398,32 +398,37 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Screenshot 预览 Modal -->
+            <!-- Screenshot 预览 Modal -->
+            <div class="modal fade" id="screenshotModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content border border-primary rounded-3">
+                        <div class="modal-header">
+                            <h5 class="modal-title">笔记预览</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                        </div>
+                        <div class="modal-body p-0 bg-light">
+                            <img id="screenshotImg" src="" alt="screenshot" class="img-fluid border-top border-primary">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
         </div>
         <div class="tab-pane fade" id="question">
             <div class="container mt-5">
                 <div class="input-group mb-3">
-                    <label class="input-group-text" for="inputGroupSelect01">学科</label>
-                    <select id="ques_subject" class="form-select" id="inputGroupSelect01">
+                    <label class="input-group-text" for="ques_subject">学科</label>
+                    <select id="ques_subject" class="form-select" onchange="ques_query()">
                         <option value="-1">请选择</option>
                     </select>
-                    <label class="input-group-text" for="inputGroupSelect01">分类</label>
-                    <select id="ques_topic" class="form-select" id="inputGroupSelect01">
-                        <option value="-1">请选择</option>
+                    <label class="input-group-text" for="ques_topic">分类</label>
+                    <select id="ques_topic" class="form-select" onchange="ques_query()">
                     </select>
-                    <button id="ques_query" class="btn btn-secondary" type="button">确认</button>
                 </div>
-                <table class="table table-hover" style="background:rgba(255,255,255,0.8) !important;">
-                    <thead>
-                        <tr>
-                            <th scope="col" class="text-secondary">#</th>
-                            <th scope="col" class="text-secondary">提问者</th>
-                            <th scope="col" class="text-secondary">标题</th>
-                            <th scope="col" class="text-secondary">更新时间</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ques_list">
-                    </tbody>
-                </table>
+                <div id="ques_list" class="row gy-3"></div>
+
 
                 <input id="ques_preview" type="button" class="d-none btn btn-primary" data-bs-toggle="modal"
                     data-bs-target="#preview">
