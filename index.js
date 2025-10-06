@@ -1,8 +1,4 @@
 (() => {
-    // 首次检测
-    detectLocalProxy();
-    // 每10秒检测一次
-    setInterval(detectLocalProxy, 10000);
     let breadcrumbStack = [
         { id: "0", name: "根目录" }
     ];
@@ -110,16 +106,56 @@
         $("#loginc").show();
         $("#logoutc").hide();
     }
+    // 监听页面滚动，控制按钮显示
+    window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+
+            // 懒加载触发逻辑保持不变
+            const windowHeight = window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight;
+            if (scrollTop + windowHeight >= documentHeight - 50) {
+                loadMoreQuestions();
+            }
+
+            // 控制返回顶部按钮显示
+            if (scrollTop > 300) {
+                document.getElementById('back_to_top').style.display = 'block';
+                document.getElementById('back_to_top').style.opacity = '1';
+            } else {
+                document.getElementById('back_to_top').style.opacity = '0';
+                setTimeout(() => {
+                    if (window.scrollY < 300) document.getElementById('back_to_top').style.display = 'none';
+                }, 300);
+            }
+        });
+
+        // 点击回到顶部
+        document.getElementById('back_to_top').addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    });
+
+    let lastProxyStatus = null;
+    window.lastProxyStatus = lastProxyStatus;
+
+    // 首次检测
+    detectLocalProxy();
+    // 每10秒检测一次
+    setInterval(detectLocalProxy, 10000);
 
 
-//     showGg(`<p><b>公告</b></p>
-// <p>网站新域名上线：zytb.loshop.com.cn</p>
-// <p>QQ群：1067807011</p>
-// `);
+    //     showGg(`<p><b>公告</b></p>
+    // <p>网站新域名上线：zytb.loshop.com.cn</p>
+    // <p>QQ群：1067807011</p>
+    // `);
 
-})();
+}
+)();
 
-let lastProxyStatus = null;
 
 async function detectLocalProxy() {
     let proxyBaseUrl = "https://zyapi.loshop.com.cn/picAgent/";
@@ -419,7 +455,6 @@ async function loadPictures() {
     loadSection(true, "recycleTable", "recyclePagination", "recycle");
 }
 
-document.addEventListener("DOMContentLoaded", loadPictures);
 
 
 function showGg(str) {
@@ -466,85 +501,139 @@ function showGg(str) {
         if (modal) modal.remove();
     };
 }
+let quesSkip = 0;
+const quesTake = 20;
+let quesLoading = false;
+let quesAllLoaded = false;
+let quesParams = {};  // 保存当前的查询条件
+
+// 点击查询按钮
 ques_query.onclick = async function () {
-    var topic = $(ques_topic).val(),
-        subject = $(ques_subject).val();
+    quesSkip = 0;
+    quesAllLoaded = false;
+    $(ques_list).html("");
 
-    let params = {
+    const topic = $(ques_topic).val();
+    const subject = $(ques_subject).val();
+
+    quesParams = {
         "orderBy": 0,
-        "skip": 0,
-        "take": 1000
+        "skip": quesSkip,
+        "take": quesTake
     };
-    if (topic !== '-1') params.catalogId = topic;
-    if (subject !== '-1') params.topicId = subject;
+    if (topic !== '-1') quesParams.catalogId = topic;
+    if (subject !== '-1') quesParams.topicId = subject;
 
-    let data = await fetch(`https://zyapi.loshop.com.cn/api/services/app/Quora/GetSessions`, {
+    await loadMoreQuestions();
+};
+
+// 加载一页数据
+async function loadMoreQuestions() {
+    if (quesLoading || quesAllLoaded) return;
+    quesLoading = true;
+
+    quesParams.skip = quesSkip;
+    quesParams.take = quesTake;
+
+    let resp = await fetch(`https://zyapi.loshop.com.cn/api/services/app/Quora/GetSessions`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${localStorage.getItem("token")}`
         },
-        body: JSON.stringify(params)
-    })
-        .then(response => response.json());
-    data = data.result;
+        body: JSON.stringify(quesParams)
+    });
+    let json = await resp.json();
+    let data = json.result || [];
 
-    $(ques_list).html("");
-    for (i in data) {
-        var tb = $(`<tr class="table" background-color: rgba(255,255,255,0.8) !important;>
-                    <th scope="row">${Number(i) + 1}</th>
-                    <td><img src="${data[i].askUserPhoto || "https://s4.anilist.co/file/anilistcdn/user/avatar/large/default.png"}" class="avatar">${data[i].askUserName}</td>
-                    <td>${data[i].summary}</td>
-                    <td>${data[i].updateTime}</td>
-                </tr>`)
-        tb.data("snap", data[i].snapshot);
-        tb.data("id", data[i].id);
-        tb.click(async function () {
-            ques_focus = this;
-            var s = "";
-            let data = await fetch(`https://zyapi.loshop.com.cn/api/services/app/Quora/GetMessages`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${localStorage.getItem("token")}`
-                },
-                body: JSON.stringify({
-                    "SessionId": $(this).data("id"),
-                    "Skip": 0,
-                    "Take": 1000
-                })
-            })
-                .then(response => response.json());
-            data = data.result;
-
-
-            for (var i in data)
-                s += `
-                    <div class="carousel-item ${i == "0" ? "active" : ""}" data-link="${data[i].content}">
-                        <img src="${window.proxyBaseUrl}${data[i].snapShot}" class="d-block w-100">
-                        <div style="padding-bottom:0" class="carousel-caption d-none d-md-block">
-                                <p>第${Number(i) + 1}/${data.length}页 发布者： ${data[i].userName}</p>
-                        </div>
-                    </div>`
-            $(ques_preview_body).html(`
-                <div id="ques_preview_pic" class="carousel slide carousel-dark" data-bs-interval="false">
-                    <div class="carousel-inner">${s}</div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#ques_preview_pic" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                        <span class="visually-hidden">Previous</span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#ques_preview_pic" data-bs-slide="next">
-                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                        <span class="visually-hidden">Next</span>
-                    </button>
-                </div>`)
-            ques_preview.click()
-
-        })
-        $(ques_list).append(tb);
+    if (data.length === 0) {
+        quesAllLoaded = true;
+        quesLoading = false;
+        return;
     }
 
-};
+    data.forEach((item, idx) => {
+        const tb = $(`
+            <tr class="table" style="background-color: rgba(255,255,255,0.8) !important; cursor:pointer;">
+                <th scope="row">${quesSkip + idx + 1}</th>
+                <td>
+                    <img src="${item.askUserPhoto || "https://s4.anilist.co/file/anilistcdn/user/avatar/large/default.png"}" 
+                         class="avatar">
+                    ${item.askUserName}
+                </td>
+                <td>${item.summary}</td>
+                <td>${item.updateTime}</td>
+            </tr>`);
+
+        tb.data("snap", item.snapshot);
+        tb.data("id", item.id);
+        tb.click(() => previewQuestion(item.id));
+
+        $(ques_list).append(tb);
+    });
+
+    quesSkip += data.length;
+    if (data.length < quesTake) {
+        quesAllLoaded = true;
+    }
+    quesLoading = false;
+}
+
+// 预览详情
+async function previewQuestion(sessionId) {
+    ques_focus = sessionId;
+    let resp = await fetch(`https://zyapi.loshop.com.cn/api/services/app/Quora/GetMessages`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({
+            "SessionId": sessionId,
+            "Skip": 0,
+            "Take": 1000
+        })
+    });
+    let json = await resp.json();
+    let data = json.result || [];
+    let s = "";
+
+    data.forEach((d, i) => {
+        s += `
+        <div class="carousel-item ${i === 0 ? "active" : ""}" data-link="${d.content}">
+            <img src="${window.proxyBaseUrl}${d.snapShot}" class="d-block w-100">
+            <div style="padding-bottom:0" class="carousel-caption d-none d-md-block">
+                <p>第${i + 1}/${data.length}页 发布者： ${d.userName}</p>
+            </div>
+        </div>`;
+    });
+
+    $(ques_preview_body).html(`
+        <div id="ques_preview_pic" class="carousel slide carousel-dark" data-bs-interval="false">
+            <div class="carousel-inner">${s}</div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#ques_preview_pic" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#ques_preview_pic" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>`);
+    ques_preview.click();
+}
+
+// 🔸 核心：监听整页滚动
+window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+
+    if (scrollTop + windowHeight >= documentHeight - 50) {
+        loadMoreQuestions();
+    }
+});
+
 ques_download.onclick = function () {
     download($('.carousel-item.active')[0].dataset.link, 'test.zip')
 };
@@ -3031,3 +3120,7 @@ async function loadChangelog() {
         $("#accordionExample").html('<div class="text-center text-muted py-3">无法加载更新日志</div>');
     }
 }
+// 返回顶部按钮
+
+
+
