@@ -47,19 +47,25 @@
         }
 
         .ball {
-            /*设置动画盒子的整体样式*/
             width: 240px;
-            /*设置整体大小*/
             height: 120px;
             text-align: center;
-            /*设置对齐方式*/
             color: #fff;
-            /*设置文字颜色*/
             background: rgba(0, 0, 0, 0.5);
-            /*设置背景颜色*/
-            margin: 20px auto;
+
+            position: fixed;
+            /* 固定在屏幕上 */
+            top: 50vh;
+            /* 顶部 50% */
+            left: 50%;
+            /* 左侧 50% */
+            transform: translate(-50%, -50%);
+            /* 精确居中 */
+
             z-index: 999;
+            /* 保证在最上层 */
         }
+
 
         .ball>p {
             /*设置加载的提示文字的样式*/
@@ -113,12 +119,6 @@
             }
         }
 
-        .ball {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
 
         #lesson {
             position: absolute;
