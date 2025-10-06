@@ -137,6 +137,16 @@
                 behavior: 'smooth'
             });
         });
+
+        document.querySelectorAll('#sidebarMenu .nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                const offcanvasEl = document.getElementById('sidebarMenu');
+                const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                if (bsOffcanvas) {
+                    bsOffcanvas.hide();
+                }
+            });
+        });
     });
 
     let lastProxyStatus = null;
