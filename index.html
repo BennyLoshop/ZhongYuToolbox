@@ -202,7 +202,8 @@
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#dev" onclick="loadRoot()">开发工具</a>
                 </li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#proxy">下载加速插件</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#Update" onclick="loadChangelog()">说明&致谢</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#Update"
+                        onclick="loadChangelog()">说明&致谢</a></li>
             </ul>
         </div>
     </div>
@@ -210,11 +211,11 @@
         <div class="tab-pane fade active show" id="Login">
             <div class="container">
                 <div class="row mt-5">
-                    <div
+                    <div id="loginc"
                         class="login col-12 col-sm-8 offset-sm-2 col-md-6 offset-md-3 col-lg-6 offset-lg-3 col-xl-4 offset-xl-4">
                         <div class="card card-primary">
                             <div class="card-header">
-                                <h4>登录</h4>
+                                <h4>用户中心</h4>
                             </div>
                             <form class="needs-validation" novalidate="">
                                 <div class="card-body">
@@ -232,6 +233,37 @@
                                     </div>
                                     <div class="login-bottom form-group mb-3">
                                         <button id="login_btn" type="button" class="btn btn-primary form-control">登录
+                                        </button>
+                                        <div class="invalid-feedback"></div>
+                                    </div>
+                                </div>
+                            </form>
+                            <div class="container">
+                                <h4>说明：</h4>
+                                <p>
+                                    本工具用于快捷查看中育账号资源，与中育智慧（无锡）数字技术有限公司及其关联公司无关
+                                    <br>
+                                    开发：
+                                    Loshop
+
+
+                                    <br>
+                                    如遇问题请及时联系
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="logoutc"
+                        class="login col-12 col-sm-8 offset-sm-2 col-md-6 offset-md-3 col-lg-6 offset-lg-3 col-xl-4 offset-xl-4">
+                        <div class="card card-primary">
+                            <div class="card-header">
+                                <h4>用户中心</h4>
+                            </div>
+                            <form class="needs-validation" novalidate="">
+                                <div class="card-body">
+                                    <h1 id="welc2"></h1>
+                                    <div class="login-bottom form-group mb-3">
+                                        <button id="logout_btn" type="button" class="btn btn-outline-primary form-control" onclick="logout()">注销
                                         </button>
                                         <div class="invalid-feedback"></div>
                                     </div>
@@ -827,7 +859,7 @@
                     <div class="container mb-3">
                         <h1 class="text-primary">更新日志</h1>
                         <div class="accordion" id="accordionExample"></div>
-                        
+
                     </div>
                 </div>
             </div>

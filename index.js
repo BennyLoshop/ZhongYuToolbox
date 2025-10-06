@@ -1,5 +1,4 @@
 (() => {
-
     // 首次检测
     detectLocalProxy();
     // 每10秒检测一次
@@ -94,14 +93,25 @@
 
     if (localStorage.getItem("token")) {
         var ezyToken = localStorage.getItem("token");
-        if (JSON.parse(atob(ezyToken.split(".")[1])).exp < (new Date).getTime() / 1000)
-            $(welc).html("身份过期，建议重新登录");
+        if (JSON.parse(atob(ezyToken.split(".")[1])).exp < (new Date).getTime() / 1000) {
+            $("#welc").html("身份过期，建议重新登录");
+            $("#loginc").show();
+            $("#logoutc").hide();
+        }
         else {
             startTokenRefresh();
-            $(welc).html(`你好！<img src="${localStorage.getItem("photo")}" style="height:calc(1.425rem + 2.5vw);margin-right:2%;margin-bottom:0.5vh;">${localStorage.getItem("realName")}`);
-        } $(login_btn).html("重新登录");
+            $("#welc2").html(`你好！<img src="${localStorage.getItem("photo")}" style="height:calc(1.425rem + 2.5vw);margin-right:2%;margin-bottom:0.5vh;">${localStorage.getItem("realName")}`);
+            $("#logoutc").show();
+            $("#loginc").hide();
+            $(login_btn).html("重新登录");
+        }
+    } else {
 
+        $("#loginc").show();
+        $("#logoutc").hide();
     }
+
+
     showGg(`<p><b>公告</b></p>
 <p>网站新域名上线：zytb.loshop.com.cn</p>
 <p>QQ群：1067807011</p>
@@ -654,6 +664,8 @@ login_btn.onclick = async () => {
 
         $("#login_btn").prop("disabled", false);
         $("#login_btn").text("登录");
+
+        $("#welc").html(message);
     } else {
         let token = data.result.accessToken;
         let refreshToken = data.result.refreshToken;
@@ -694,16 +706,27 @@ login_btn.onclick = async () => {
         $("#login_btn").text("重新登录");
 
         message = `你好！<img src="${localStorage.getItem("photo")}" style="height:calc(1.425rem + 2.5vw);margin-right:2%;margin-bottom:0.5vh;">${localStorage.getItem("realName")}`;
-
+        $("#logoutc").show();
+        $("#loginc").hide();
         // 启动 token 自动刷新
         startTokenRefresh();
+
+        $("#welc2").html(message);
     }
 
-    $(welc).html(message);
     $(".ball").fadeOut(500);
 }
+async function logout() {
+    $('#loginc').show();
+    $('#logoutc').hide();
+    clearInterval(window.tokenRefresh);
+    localStorage.setItem("token", "");
+    localStorage.setItem("refreshToken", "");
+    localStorage.setItem("tokenExpire", "");
+    localStorage.setItem("refreshTokenExpire", "");
+}
 function startTokenRefresh() {
-    setInterval(async () => {
+    window.tokenRefresh = setInterval(async () => {
         let tokenExpire = parseInt(localStorage.getItem("tokenExpire") || 0);
         let refreshTokenExpire = parseInt(localStorage.getItem("refreshTokenExpire") || 0);
         let now = Date.now();
@@ -2991,7 +3014,7 @@ function renderChangelog(data) {
                 </div>
             </div>
         </div>`;
-        
+
         $accordion.append(accordionItem);
     });
 }
@@ -3005,5 +3028,5 @@ async function loadChangelog() {
     } catch (err) {
         console.error("加载更新日志失败:", err);
         $("#accordionExample").html('<div class="text-center text-muted py-3">无法加载更新日志</div>');
-    }  
+    }
 }
