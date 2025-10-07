@@ -191,6 +191,8 @@
                         onclick="fetchExams()">新测评</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#ZXZL"
                         onclick="zxzl_set_url()">在线专栏</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#CK"
+                        onclick="ck_set_url()">选课</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#Mistake"
                         onclick="mistakeInit()">错题本</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#question"
@@ -377,6 +379,17 @@
                 src="http://zyapi.loshop.com.cn/navPage.html%3FapiHost=https:%252F%252Fzyapi.loshop.com.cn&amp;apiToken=.html"
                 style="width:100%;height:calc(100% - 40px);border:none;display:block;"></iframe>
         </div>
+
+        <div class="tab-pane fade" id="CK" style="height:calc(100vh - 56px);overflow:hidden;">
+            <div class="d-flex justify-content-end align-items-center" style="height:40px;">
+                <a id="ck_login" class="btn btn-outline-primary btn-sm mt-2 mb-2 me-3">
+                    在新页面打开
+                </a>
+            </div>
+            <iframe id="ck_iframe"
+                src="http://zyapi.loshop.com.cn/navPage.html%3FapiHost=https:%252F%252Fzyapi.loshop.com.cn&amp;apiToken=.html"
+                style="width:100%;height:calc(100% - 40px);border:none;display:block;"></iframe>
+        </div>
         <div class="tab-pane fade" id="Mistake">
             <div class="container mt-5">
                 <div class="input-group mb-3">
@@ -421,7 +434,7 @@
                 <div class="input-group mb-3">
                     <label class="input-group-text" for="ques_subject">学科</label>
                     <select id="ques_subject" class="form-select" onchange="ques_query()">
-                        <option value="-1">请选择</option>
+                        <option value="0">全部</option>
                     </select>
                     <label class="input-group-text" for="ques_topic">分类</label>
                     <select id="ques_topic" class="form-select" onchange="ques_query()">

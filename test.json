@@ -1,0 +1,22 @@
+{
+    "catalogId": -1,
+    "joinTime": {
+        "end": "",
+        "start": ""
+    },
+    "justWatch": [
+        0
+    ],
+    "justWatchByTeacher": [
+        0
+    ],
+    "keyword": "",
+    "orderBy": 0,
+    "skip": 0,
+    "take": 20,
+    "topicId": 0,
+    "updateTime": {
+        "end": "",
+        "start": ""
+    }
+}

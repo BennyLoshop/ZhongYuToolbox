@@ -512,7 +512,7 @@ function showGg(str) {
     };
 }
 let quesSkip = 0;
-const quesTake = 24;
+const quesTake = 12;
 let quesLoading = false;
 let quesAllLoaded = false;
 let quesParams = {};  // 保存当前的查询条件
@@ -529,8 +529,8 @@ async function ques_query() {
         "skip": quesSkip,
         "take": quesTake
     };
-    if (topic !== '-1') quesParams.catalogId = topic;
-    if (subject !== '-1') quesParams.topicId = subject;
+    quesParams.catalogId = parseInt(topic, 10);
+    quesParams.topicId = parseInt(subject, 10);
 
     await loadMoreQuestions();
 }
@@ -575,7 +575,7 @@ async function loadMoreQuestions() {
                     </div>
                 </div>
                 <div class="card-img-container" style="max-height:250px; overflow:hidden;">
-                    <img src="${item.snapshot}" class="card-img-bottom w-100" style="object-fit:cover;">
+                    <img src="${window.proxyBaseUrl + item.snapshot}" class="card-img-bottom w-100" style="object-fit:cover;">
                 </div>
             </div>
         </div>
@@ -1455,6 +1455,7 @@ async function quoraInit() {
         }
     }).then(response => response.json());
     data = data.result;
+    $('#ques_topic').html("");
     for (i in data) {
         $(ques_topic).append(`<option value="${data[i].id}">${data[i].name}</option>`)
     }
@@ -1486,6 +1487,18 @@ function zxzl_set_url() {
 
     var iframe = document.getElementById("zxzl_iframe");
     iframe.src = "https://zyapi.loshop.com.cn/navPage.html?apiHost=https://zyapi.loshop.com.cn&apiToken=" + localStorage.getItem("token") + "#\/list?messageType=pager";
+
+}
+
+ck_login = document.getElementById("ck_login");
+ck_login.onclick = async () => {
+    window.open("http://sxz.school.zykj.org/index.html?apiHost=http:\/\/sxz.api.zykj.org&apiToken=" + localStorage.getItem("token") + "#/index/courseChoosing/StudentsCoursesList");
+}
+
+function ck_set_url() {
+
+    var iframe = document.getElementById("ck_iframe");
+    iframe.src = "http://sxz.school.zykj.org/index.html?apiHost=http:\/\/sxz.api.zykj.org&apiToken=" + localStorage.getItem("token") + "#/index/courseChoosing/StudentsCoursesList";
 
 }
 
