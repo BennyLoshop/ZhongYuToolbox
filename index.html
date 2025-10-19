@@ -145,6 +145,37 @@
         .navbar .container-fluid {
             justify-content: flex-start;
         }
+
+        .chapter-item {
+            padding: 5px 10px;
+            border-radius: 5px;
+            user-select: none;
+        }
+
+        .chapter-item.selected {
+            background-color: #e0f7fa;
+        }
+
+        .chapter-item .title {
+            display: inline-block;
+        }
+
+        .chapter-children {
+            margin-left: 15px;
+            display: none;
+            /* 默认折叠 */
+        }
+
+        .folder .triangle {
+            display: inline-block;
+            width: 1em;
+            transition: transform 0.2s;
+        }
+
+        .folder.expanded>.triangle {
+            transform: rotate(90deg);
+            /* 展开时旋转三角 */
+        }
     </style>
     <script>
         $(".ball").fadeOut(5);
@@ -191,8 +222,8 @@
                         onclick="fetchExams()">新测评</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#ZXZL"
                         onclick="zxzl_set_url()">在线专栏</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#CK"
-                        onclick="ck_set_url()">选课</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#CK" onclick="ck_set_url()">选课</a>
+                </li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#Mistake"
                         onclick="mistakeInit()">错题本</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#question"
@@ -910,19 +941,23 @@
                         class="down" data-toggle="modal">点此反馈</a>
                 </div>
                 <div class="input-group mb-3">
-                    <label class="input-group-text" for="id_c">科目</label>
-                    <select class="form-select" id="id_c" onchange="show_class()">
-                    </select>
+                    <label class="input-group-text" for="course_input">课程</label>
+                    <input class="form-control" id="course_input" readonly placeholder="请选择课程">
+                    <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#courseModal">
+                        更换课程
+                    </button>
                 </div>
                 <div class="input-group mb-3">
-                    <label class="input-group-text" for="cid_c">课程</label>
-                    <select class="form-select" id="cid_c" onchange="set_ids()">
-                    </select>
+                    <div id="cid_card" class="card"
+                        style="max-height:300px; overflow-y:auto; width:100%; padding:10px;"><p>请先选择课程</p>
+                        <!-- 章节列表会动态生成在这里 -->
+                    </div>
                 </div>
+
                 <div class="input-group mb-3">
-                    <label class="input-group-text" for="id_input" readonly="">科目ID</label>
+                    <label class="input-group-text" for="id_input" readonly="">课程ID</label>
                     <input class="form-control" id="id_input" readonly="">
-                    <label class="input-group-text" for="cid_input" readonly="">课程ID</label>
+                    <label class="input-group-text" for="cid_input" readonly="">章节ID</label>
                     <input class="form-control" id="cid_input" readonly="">
                     <button id="load" class="btn btn-secondary" type="button" onclick="show_page()">刷新</button>
                     <button id="reload_lesson" class="btn btn-primary" type="button" onclick="change_all()">手动渲染
@@ -938,6 +973,26 @@
 
                     </div>
                 </div>
+                <div class="modal fade" id="courseModal" tabindex="-1" aria-labelledby="courseModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="courseModalLabel">选择课程</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="关闭"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="input-group mb-3">
+                                    <input type="text" id="courseSearch" class="form-control" placeholder="搜索课程..."
+                                        oninput="filterCourses()">
+                                </div>
+                                <div id="courseGrid" class="row g-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
 
                 <input id="1" type="button" class="d-none btn btn-primary" data-bs-toggle="modal"
                     data-bs-target="#preview">
@@ -1056,6 +1111,7 @@
                     fill="#000000" style="fill: rgb(255, 255, 255);"></path>
             </g>
         </svg> </button>
+
 </body>
 
 </html>

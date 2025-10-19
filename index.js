@@ -88,24 +88,41 @@
         };
 
     if (localStorage.getItem("token")) {
-        var ezyToken = localStorage.getItem("token");
-        if (JSON.parse(atob(ezyToken.split(".")[1])).exp < (new Date).getTime() / 1000) {
+        const ezyToken = localStorage.getItem("token");
+        let expired = true;
+
+        try {
+            const parts = ezyToken.split(".");
+            if (parts.length >= 2) {
+                const payloadJson = atob(parts[1]);
+                const payload = JSON.parse(payloadJson);
+                if (payload.exp && payload.exp > Date.now() / 1000) {
+                    expired = false;
+                }
+            }
+        } catch {
+            // 静默处理，不打印错误、不弹窗
+            expired = true;
+        }
+
+        if (expired) {
             $("#welc").html("身份过期，建议重新登录");
             $("#loginc").show();
             $("#logoutc").hide();
-        }
-        else {
+        } else {
             startTokenRefresh();
-            $("#welc2").html(`你好！<img src="${localStorage.getItem("photo")}" style="height:calc(1.425rem + 2.5vw);margin-right:2%;margin-bottom:0.5vh;">${localStorage.getItem("realName")}`);
+            $("#welc2").html(
+                `你好！<img src="${localStorage.getItem("photo")}" style="height:calc(1.425rem + 2.5vw);margin-right:2%;margin-bottom:0.5vh;">${localStorage.getItem("realName")}`
+            );
             $("#logoutc").show();
             $("#loginc").hide();
             $(login_btn).html("重新登录");
         }
     } else {
-
         $("#loginc").show();
         $("#logoutc").hide();
     }
+
     // 监听页面滚动，控制按钮显示
     window.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('scroll', () => {
@@ -165,6 +182,245 @@
 
 }
 )();
+(function () {
+    document.addEventListener('DOMContentLoaded', () => {
+        // 一、点击 tab 时，记录 hash（方便刷新时恢复）
+        document.querySelectorAll('#sidebarMenu a.nav-link[data-bs-toggle="tab"]').forEach(link => {
+            link.addEventListener('shown.bs.tab', e => {
+                const target = e.target.getAttribute('href');
+                if (target && target.startsWith('#')) {
+                    history.replaceState(null, '', target); // 更新地址栏 hash
+                }
+            });
+        });
+
+        // 二、页面加载时，根据 hash 激活对应 tab
+        const currentHash = window.location.hash;
+        if (currentHash) {
+            const tabLink = document.querySelector(`#sidebarMenu a.nav-link[href="${currentHash}"]`);
+            if (tabLink) {
+                // 激活 tab（Bootstrap 5）
+                const tabTrigger = new bootstrap.Tab(tabLink);
+                tabTrigger.show();
+
+                // 触发绑定的 onclick 逻辑（如 loadPictures()）
+                if (typeof tabLink.onclick === 'function') {
+                    tabLink.onclick();
+                }
+            }
+        } else {
+            // 没有 hash 时默认显示第一个（登录）
+            const defaultTab = document.querySelector('#sidebarMenu a.nav-link[href="#Login"]');
+            if (defaultTab) {
+                const tabTrigger = new bootstrap.Tab(defaultTab);
+                tabTrigger.show();
+            }
+        }
+
+        // 三、监听 hashchange（用户手动改地址或浏览器前进/后退时也能切换）
+        window.addEventListener('hashchange', () => {
+            const newHash = window.location.hash;
+            const tabLink = document.querySelector(`#sidebarMenu a.nav-link[href="${newHash}"]`);
+            if (tabLink) {
+                const tabTrigger = new bootstrap.Tab(tabLink);
+                tabTrigger.show();
+                if (typeof tabLink.onclick === 'function') {
+                    tabLink.onclick();
+                }
+            }
+        });
+    });
+})();
+(function () {
+    const iframeId = 'ck_iframe';
+    const targetClass = 'header-box';
+    const targetId = 'actScrollList';
+    const intervalMs = 100; // 每1s执行一次检查（作为保险）
+    let intervalHandle = null;
+    let observerInstalled = false;
+
+    function applyOnce(doc) {
+        let changed = false;
+        // 1) 删除 header-box（如果存在）
+        const header = doc.querySelector('.' + targetClass);
+        if (header) {
+            header.remove();
+            console.log(`[${new Date().toLocaleTimeString()}] 已移除 .${targetClass}`);
+            changed = true;
+        }
+
+        // 2) 注入 CSS（带 !important，覆盖其它规则）
+        //    若已存在同 id 的 style，则覆盖其内容
+        const styleId = 'injected-actScrollList-style';
+        let styleEl = doc.getElementById(styleId);
+        const cssText = `#${targetId} { height: 70vh !important; max-height: 70vh !important; min-height: 70vh !important; overflow: auto !important; }`;
+        if (!styleEl) {
+            styleEl = doc.createElement('style');
+            styleEl.id = styleId;
+            styleEl.type = 'text/css';
+            styleEl.appendChild(doc.createTextNode(cssText));
+            // 插入到 head 或 documentElement
+            const head = doc.head || doc.getElementsByTagName('head')[0] || doc.documentElement;
+            head.appendChild(styleEl);
+            console.log(`[${new Date().toLocaleTimeString()}] 已注入样式，强制 #${targetId} = 70vh`);
+            changed = true;
+        } else if (styleEl.textContent !== cssText) {
+            styleEl.textContent = cssText;
+            console.log(`[${new Date().toLocaleTimeString()}] 已更新注入样式`);
+            changed = true;
+        }
+
+        // 3) 直接设置元素内联高度（作为额外保险）
+        const act = doc.getElementById(targetId);
+        if (act) {
+            // 设置内联样式并通过 setProperty 带 !important
+            const before = act.style.getPropertyValue('height');
+            act.style.setProperty('height', '71vh', 'important');
+            act.style.setProperty('max-height', '71vh', 'important');
+            act.style.setProperty('min-height', '71vh', 'important');
+            if (before !== '70vh') {
+                console.log(`[${new Date().toLocaleTimeString()}] 已设置 #${targetId} style.height = 70vh (inline important)`);
+                changed = true;
+            }
+        } else {
+            // 若尚未找到元素，仅记录
+            // console.log(`#${targetId} 尚未找到`);
+        }
+
+        return changed;
+    }
+
+    function installObserver(doc) {
+        if (observerInstalled) return;
+        try {
+            // 观察 body 下的子树变化：新增/移除节点或属性变化
+            const root = doc.body || doc.documentElement;
+            if (!root) return;
+            const mo = new MutationObserver((mutations) => {
+                let need = false;
+                for (const m of mutations) {
+                    // 如果有新节点被添加，或 class/id/属性变化，就尝试执行一次 applyOnce
+                    if (m.addedNodes && m.addedNodes.length) {
+                        need = true; break;
+                    }
+                    if (m.type === 'attributes') {
+                        need = true; break;
+                    }
+                }
+                if (need) {
+                    try {
+                        applyOnce(doc);
+                    } catch (e) {
+                        console.warn('observer 执行 applyOnce 时出错:', e);
+                    }
+                }
+            });
+            mo.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'id', 'style'] });
+            // 将 observer 引用挂到 document 上，以便未来可以断开（如果需要）
+            doc._injectedMutationObserver = mo;
+            observerInstalled = true;
+            console.log('已在 iframe 内部安装 MutationObserver，用于动态内容监控。');
+        } catch (e) {
+            console.warn('安装 MutationObserver 失败:', e);
+        }
+    }
+
+    function start() {
+        const iframe = document.getElementById(iframeId);
+        if (!iframe) {
+            console.warn(`找不到 iframe#${iframeId}，将继续每 ${intervalMs}ms 重试...`);
+        }
+
+        let attempts = 0;
+        const maxAttempts = 0; // 0 = 不限制；如需限制可设大于0的次数
+
+        intervalHandle = setInterval(() => {
+            attempts++;
+            try {
+                const node = document.getElementById(iframeId);
+                if (!node) {
+                    if (attempts % 10 === 0) console.log(`等待 iframe#${iframeId} 出现... (尝试 ${attempts})`);
+                    if (maxAttempts && attempts >= maxAttempts) {
+                        console.warn('达到最大尝试次数，停止定时器。');
+                        clearInterval(intervalHandle);
+                    }
+                    return;
+                }
+
+                const win = node.contentWindow;
+                const doc = node.contentDocument || (win && win.document);
+                if (!doc) {
+                    if (attempts % 10 === 0) console.log('iframe 文档尚不可访问或尚未加载，继续等待...');
+                    return;
+                }
+
+                // 确认 iframe 已加载（readyState）
+                const ready = doc.readyState;
+                if (ready !== 'complete' && ready !== 'interactive') {
+                    // 还在加载，继续下一轮
+                    // console.log('iframe 正在加载，等待 complete...');
+                    return;
+                }
+
+                // 执行一次修改
+                applyOnce(doc);
+                // 安装 observer（只安装一次）
+                installObserver(doc);
+
+                // 还可以额外监听 iframe 的 load 事件，确保当 iframe 重新加载时重新应用
+                if (!node._listenerAttached) {
+                    node.addEventListener('load', () => {
+                        try {
+                            const d = node.contentDocument;
+                            applyOnce(d);
+                            // 重新安装 observer（先断开旧的）
+                            if (d && d._injectedMutationObserver) {
+                                try { d._injectedMutationObserver.disconnect(); } catch (e) { }
+                            }
+                            observerInstalled = false;
+                            installObserver(d);
+                        } catch (e) {
+                            console.warn('iframe load 事件处理失败:', e);
+                        }
+                    });
+                    node._listenerAttached = true;
+                }
+
+                // 如果你想在成功第一次后停止轮询，可以取消下面注释：
+                // clearInterval(intervalHandle);
+
+            } catch (err) {
+                console.error('尝试访问/修改 iframe 时发生错误:', err);
+            }
+
+            if (maxAttempts && attempts >= maxAttempts) {
+                console.warn('达到最大尝试次数，停止定时器。');
+                clearInterval(intervalHandle);
+            }
+        }, intervalMs);
+    }
+
+    // 提供停止函数
+    window.stopIframeAdjust = function () {
+        try {
+            if (intervalHandle) clearInterval(intervalHandle);
+            const node = document.getElementById(iframeId);
+            const doc = node && (node.contentDocument || node.contentWindow && node.contentWindow.document);
+            if (doc && doc._injectedMutationObserver) {
+                try { doc._injectedMutationObserver.disconnect(); } catch (e) { }
+            }
+            observerInstalled = false;
+            console.log('已停止 iframe 调整和 observer。');
+        } catch (e) {
+            console.warn('停止时发生异常:', e);
+        }
+    };
+
+    // 启动
+    start();
+    console.log(`已启动针对 iframe#${iframeId} 的每 ${intervalMs}ms 调整器（同源）。`);
+})();
+
 
 
 async function detectLocalProxy() {
@@ -2409,111 +2665,212 @@ async function change_all() {
 
 var page_json = "";
 var page_name = "";
+let allCourses = [];
+let filteredCourses = [];
+
+async function show_lesson() {
+    allCourses = [];
+    let page = 1;
+
+    while (true) {
+        try {
+            const res = await $.ajax({
+                url: `https://zyapi.loshop.com.cn/SelfStudy/api/Learn/LearningCourses?page=${page}`,
+                type: "get",
+                dataType: "json",
+                beforeSend: function (request) {
+                    request.setRequestHeader("Content-Type", "application/json");
+                    request.setRequestHeader("Authorization", "Bearer " + localStorage.getItem("token"));
+                }
+            });
+
+            if (res.data && res.data.length > 0) {
+                allCourses = allCourses.concat(res.data);
+                page++; // 请求下一页
+            } else {
+                break; // 数据为空，停止分页
+            }
+        } catch (err) {
+            console.error("课程请求失败:", err);
+            $("#courseGrid").html("<p class='text-danger'>加载失败，请重试。</p>");
+            return;
+        }
+    }
+
+    filteredCourses = allCourses;
+    renderCourseCards();
+}
+
+// 渲染课程卡片
+function renderCourseCards() {
+    const grid = $("#courseGrid");
+    grid.empty();
+
+    if (!filteredCourses || filteredCourses.length === 0) {
+        grid.html("<p class='text-muted'>暂无课程。</p>");
+        return;
+    }
+
+    filteredCourses.forEach((item) => {
+        const isDisabled = item.status === 0;
+        let coverUrl = "";
+        if (window.proxyBaseUrl) {
+            coverUrl = window.proxyBaseUrl + item.cover;
+        } else {
+            coverUrl = "https://zyapi.loshop.com.cn/picAgent/" + item.cover;
+        }
+        const progress = item.progress || 0;
+        const teacher = item.userName || "未知教师";
+        const subject = item.subjectName || "未知学科";
+
+        const cardHtml = `
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card shadow-sm ${isDisabled ? "opacity-50" : "hover-shadow"}" 
+                style="cursor:${isDisabled ? "not-allowed" : "pointer"};"
+                onclick="${isDisabled ? "" : `selectCourse(${item.id}, '${item.title.replace(/'/g, "\\'")}')`}">
+                <img src="${coverUrl}" class="card-img-top" alt="封面" style="object-fit:cover; height:180px;">
+                <div class="card-body">
+                    <h5 class="card-title text-truncate">${item.title}${isDisabled ? "（已下架）" : ""}</h5>
+                    <p class="card-text mb-1"><strong>学科：</strong>${subject}</p>
+                    <p class="card-text mb-1"><strong>教师：</strong>${teacher}</p>
+                    <p class="card-text mb-0"><strong>进度：</strong>${progress}%</p>
+                </div>
+            </div>
+        </div>`;
+        grid.append(cardHtml);
+    });
+}
+
+// 搜索过滤
+function filterCourses() {
+    const keyword = $("#courseSearch").val().toLowerCase();
+    filteredCourses = allCourses.filter(c => c.title.toLowerCase().includes(keyword));
+    renderCourseCards();
+}
+
+
+function selectCourse(id, title) {
+    $("#course_input").val(title);
+    $("#id_input").val(id);
+    $("#courseModal").modal("hide");
+
+    // 加载课程详情
+    show_class();
+}
+
+function show_class() {
+    const courseId = $("#id_input").val();
+    if (!courseId) return;
+
+    $.ajax({
+        url: "https://zyapi.loshop.com.cn/SelfStudy/api/Learn/CourseDetail?id=" + courseId,
+        type: "get",
+        dataType: "json",
+        beforeSend: function (request) {
+            request.setRequestHeader("Content-Type", "application/json");
+            request.setRequestHeader("Authorization", "Bearer " + localStorage.getItem("token"));
+        },
+        success: function (res) {
+            const container = $("#cid_card");
+            container.empty();
+
+            const catalogs = res.data.catalogs;
+            if (!catalogs || catalogs.length === 0) {
+                container.append(`<div class="text-muted">该课程暂无章节</div>`);
+                $("#cid_input").val("");
+                return;
+            }
+
+            function renderChapter(chapters, parent) {
+                chapters.forEach(c => {
+                    const div = $("<div>").addClass("chapter-item");
+                    let prefix;
+
+                    if (c.isLeaf) {
+                        prefix = ''; // 叶子章节用原点
+                    } else {
+                        prefix = '<span class="triangle">●</span>'; // 文件夹用三角
+                        div.addClass("folder");
+                    }
+
+                    div.append(`<span class="title">${prefix} ${c.title}</span>`);
+
+                    if (c.isLeaf) {
+                        div.css("cursor", "pointer");
+                        div.on("click", function (e) {
+                            e.stopPropagation(); // 阻止事件冒泡到父节点
+                            $("#cid_card .chapter-item").removeClass("selected");
+                            $(this).addClass("selected");
+                            $("#cid_input").val(c.id);
+                            show_page();
+                        });
+                    } else {
+                        div.css("cursor", "default");
+
+                        // 可折叠子节点
+                        if (c.children && c.children.length > 0) {
+                            const childContainer = $("<div>").addClass("chapter-children");
+                            div.append(childContainer);
+
+                            div.on("click", function (e) {
+                                e.stopPropagation(); // 阻止事件冒泡
+                                const expanded = div.hasClass("expanded");
+                                div.toggleClass("expanded");
+                                childContainer.slideToggle(150);
+                            });
+
+                            renderChapter(c.children, childContainer);
+                        }
+                    }
+
+
+                    parent.append(div);
+                });
+            }
+
+            renderChapter(catalogs, container);
+        },
+        error: function () {
+            const container = $("#cid_card");
+            container.empty();
+            container.append(`<div class="text-danger">章节加载失败，请重试</div>`);
+            $("#cid_input").val("");
+        }
+    });
+}
+
+
+
+
+
+
+function set_ids() {
+    $("#cid_input").val($("#cid_c").val());
+    show_page();
+}
 
 function show_page() {
     $.ajax({
-        url: 'https:\/\/zyapi.loshop.com.cn\/SelfStudy\/api\/learn\/readContent?catalogId=' + $('#cid_input').val() + '&courseId=' + $('#id_input').val(),
-        type: 'get',
-        // 设置的是请求参数
-        dataType: 'json', // 用于设置响应体的类型 注意 跟 data 参数没关系！！！
+        url:
+            "https://zyapi.loshop.com.cn/SelfStudy/api/learn/readContent?catalogId=" +
+            $("#cid_input").val() +
+            "&courseId=" +
+            $("#id_input").val(),
+        type: "get",
+        dataType: "json",
         beforeSend: function (request) {
             request.setRequestHeader("Content-Type", "application/json");
             request.setRequestHeader("Authorization", "Bearer " + localStorage.getItem("token"));
         },
         success: function (res) {
-            // 一旦设置的 dataType 选项，就不再关心 服务端 响应的 Content-Type 了
-            // 客户端会主观认为服务端返回的就是 JSON 格式的字符串
             page_json = JSON.stringify(res.data.content);
-            page_name = $("#cid_c").find("option:selected").text();
-            //console.log(res.data.content);
-            var div = document.getElementById('show');
+            page_name = $("#course_input").val();
+            const div = document.getElementById("show");
             div.replaceChildren();
-            div.innerHTML += res.data.content
+            div.innerHTML += res.data.content;
             change_all();
-        }
-    });
-}
-
-function show_lesson() {
-    let allData = [];
-
-    function fetchPage(page) {
-        $.ajax({
-            url: 'https://zyapi.loshop.com.cn/SelfStudy/api/Learn/LearningCourses?page=' + page,
-            type: 'get',
-            dataType: 'json',
-            beforeSend: function (request) {
-                request.setRequestHeader("Content-Type", "application/json");
-                request.setRequestHeader("Authorization", "Bearer " + localStorage.getItem("token"));
-            },
-            success: function (res) {
-                if (res.data && res.data.length > 0) {
-                    // 累加数据
-                    allData = allData.concat(res.data);
-                    // 继续请求下一页
-                    fetchPage(page + 1);
-                } else {
-                    // 没有数据了，渲染
-                    console.log("所有页数据：", allData);
-
-                    $("#id_c").empty();
-                    for (let i = 0; i < allData.length; i++) {
-                        $('#id_c').append(
-                            '<option value="' + allData[i].id + '">' + allData[i].title + '</option>'
-                        );
-                    }
-                    show_class();
-                }
-            },
-            error: function (xhr, status, error) {
-                console.error("请求失败:", error);
-            }
-        });
-    }
-
-    // 从第一页开始
-    fetchPage(1);
-}
-
-
-//$('#id_c').val()
-function show_class() {
-    $.ajax({
-        url: 'https:\/\/zyapi.loshop.com.cn\/SelfStudy\/api\/Learn\/CourseDetail?id=' + $('#id_c').val(),
-        type: 'get',
-        // 设置的是请求参数
-        dataType: 'json', // 用于设置响应体的类型 注意 跟 data 参数没关系！！！
-        beforeSend: function (request) {
-            request.setRequestHeader("Content-Type", "application/json");
-            request.setRequestHeader("Authorization", "Bearer " + localStorage.getItem("token"));
         },
-        success: function (res) {
-            // 一旦设置的 dataType 选项，就不再关心 服务端 响应的 Content-Type 了
-            // 客户端会主观认为服务端返回的就是 JSON 格式的字符串
-            //console.log(res.data.catalogs);
-            $("#cid_c").find("option").remove();
-            for (i = 0; i < res.data.catalogs.length; i++) {
-                console.log(res.data.catalogs[i]);
-                if (res.data.catalogs[i].isLeaf) {
-                    console.log('<option value="' + res.data.catalogs[i].id + '">' + res.data.catalogs[i].title + '</option>');
-                    $('#cid_c').append('<option value="' + res.data.catalogs[i].id + '">' + res.data.catalogs[i].title + '</option>');
-                } else {
-                    for (j = 0; j < res.data.catalogs[i].children.length; j++) {
-                        console.log('<option value="' + res.data.catalogs[i].children[j].id + '">' + res.data.catalogs[i].children[j].title + '</option>');
-                        $('#cid_c').append('<option value="' + res.data.catalogs[i].children[j].id + '">' + res.data.catalogs[i].children[j].title + '</option>');
-                    }
-                }
-            }
-            set_ids();
-        }
     });
-
-}
-
-function set_ids() {
-    $("#id_input").attr("value", $('#id_c').val());
-    $("#cid_input").attr("value", $('#cid_c').val());
-    show_page();
 }
 
 function down_file(data) {
