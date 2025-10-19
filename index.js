@@ -1,4 +1,5 @@
 (() => {
+    window.proxyBaseUrl = "https://zyapi.loshop.com.cn/picAgent/";
     let breadcrumbStack = [
         { id: "0", name: "根目录" }
     ];
