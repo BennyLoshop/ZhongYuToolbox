@@ -1492,11 +1492,15 @@ function zxzl_set_url() {
 
 ck_login = document.getElementById("ck_login");
 ck_login.onclick = async () => {
-    window.open(`https://proxy.loshop.com.cn/scramjet/${encodeURIComponent("http://sxz.school.zykj.org/index.html?apiHost=http:\/\/sxz.api.zykj.org&apiToken=" + localStorage.getItem("token") + "#/index/courseChoosing/StudentsCoursesList")}`);
+    window.open("ezyRawContent.html?apiHost=https:\/\/zyapi.loshop.com.cn&apiToken=" + localStorage.getItem("token") + "#/index/courseChoosing/StudentsCoursesList");
 }
 
 function ck_set_url() {
+    var iframe = document.getElementById("ck_iframe");
+    iframe.src = "ezyRawContent.html?apiHost=https:\/\/zyapi.loshop.com.cn&apiToken=" + localStorage.getItem("token") + "#/index/courseChoosing/StudentsCoursesList";
+
 }
+
 
 var note_link = "http:\/\/ezy-sxz.oss-cn-hangzhou.aliyuncs.com\/1\/appstore\/云笔记_master_20240513.01_1938_1.9.38.apk";
 var test_link = "http:\/\/ezy-sxz.oss-cn-hangzhou.aliyuncs.com\/1\/appstore\/新测评_master_20240304.01_release_215_2.1.5.apk";
