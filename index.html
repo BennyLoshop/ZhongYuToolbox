@@ -255,6 +255,17 @@
                                 <div class="card-body">
                                     <h1 id="welc"></h1>
                                     <div class="form-group mb-3">
+                                        <label for="school_select">学校</label>
+                                        <select id="school_select" class="form-select" onchange="onSchoolChange()">
+                                            <option value="sxz">省锡中</option>
+                                            <option value="other">其它学校</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group mb-3" id="school_code_group" style="display:none;">
+                                        <label for="school_code">学校代码</label>
+                                        <input id="school_code" type="text" class="form-control" placeholder="输入学校代码">
+                                    </div>
+                                    <div class="form-group mb-3">
                                         <label for="account">用户名</label>
                                         <input id="account" type="text" class="form-control" autofocus=""
                                             placeholder="输入用户名">

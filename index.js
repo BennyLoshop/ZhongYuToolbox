@@ -1,5 +1,7 @@
 (() => {
-    window.proxyBaseUrl = "https://zyapi.loshop.com.cn/picAgent/";
+    window.API_BASE_URL = localStorage.getItem("apiBaseUrl") || "https://zyapi.loshop.com.cn";
+    window.API_BASE_BASE_URL = localStorage.getItem("apiBaseOrigin") || "https://zyapi.loshop.com.cn";
+    window.proxyBaseUrl = localStorage.getItem("apiBaseUrl") ? localStorage.getItem("apiBaseUrl").replace("//", "//picAgent.") : "https://zyapi.loshop.com.cn/picAgent/";
     let breadcrumbStack = [
         { id: "0", name: "根目录" }
     ];
@@ -552,7 +554,7 @@ async function loadPictures() {
     };
 
     async function fetchPictures(isRecycleBin, skip) {
-        const url = `https://zyapi.loshop.com.cn/api/services/app/PictureLibrary/GetAllPicturesFromLibrary?SkipCount=${skip}&MaxResultCount=${maxCount}&IsRecycleBin=${isRecycleBin}`;
+        const url = `${window.API_BASE_URL}/api/services/app/PictureLibrary/GetAllPicturesFromLibrary?SkipCount=${skip}&MaxResultCount=${maxCount}&IsRecycleBin=${isRecycleBin}`;
         const res = await fetch(url, {
             headers: { "Authorization": "Bearer " + token }
         });
@@ -800,7 +802,7 @@ async function loadMoreQuestions() {
     quesParams.skip = quesSkip;
     quesParams.take = quesTake;
 
-    let resp = await fetch(`https://zyapi.loshop.com.cn/api/services/app/Quora/GetSessions`, {
+    let resp = await fetch(`${window.API_BASE_URL}/api/services/app/Quora/GetSessions`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -856,7 +858,7 @@ async function loadMoreQuestions() {
 // 预览详情
 async function previewQuestion(sessionId) {
     ques_focus = sessionId;
-    let resp = await fetch(`https://zyapi.loshop.com.cn/api/services/app/Quora/GetMessages`, {
+    let resp = await fetch(`${window.API_BASE_URL}/api/services/app/Quora/GetMessages`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -914,7 +916,7 @@ ques_download.onclick = function () {
 
 async function mistake_query() {
     var subject = $(mistake_subject).val();
-    let data = await fetch(`https://zyapi.loshop.com.cn/api/services/app/MistakeBook/SearchMistakeQstItemsAsync`, {
+    let data = await fetch(`${window.API_BASE_URL}/api/services/app/MistakeBook/SearchMistakeQstItemsAsync`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -948,7 +950,7 @@ async function mistake_query() {
         tb.click(async function () {
             try {
                 // 获取题目详情
-                let res = await fetch(`https://zyapi.loshop.com.cn/api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync?itemId=` + $(this).data("id"), {
+                let res = await fetch(`${window.API_BASE_URL}/api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync?itemId=` + $(this).data("id"), {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -1047,6 +1049,19 @@ var downloading = 0,
     }
 })
 
+
+// 学校选择切换
+function onSchoolChange() {
+    const schoolSelect = document.getElementById("school_select");
+    const schoolCodeGroup = document.getElementById("school_code_group");
+    if (schoolSelect.value === "other") {
+        schoolCodeGroup.style.display = "block";
+    } else {
+        schoolCodeGroup.style.display = "none";
+    }
+}
+
+// 登录
 login_btn.onclick = async () => {
     $("#login_btn").prop("disabled", true);
     $("#login_btn").text("登录中");
@@ -1054,9 +1069,52 @@ login_btn.onclick = async () => {
     let message;
     let accountVal = account.value;
     let passwordVal = password.value;
+    let schoolSelect = document.getElementById("school_select").value;
+    let schoolCode = document.getElementById("school_code").value.trim();
+    let currentApiBaseUrl = window.API_BASE_URL;
+    let schoolName = "省锡中";
+
+    // 处理其它学校
+    if (schoolSelect === "other") {
+        if (!schoolCode) {
+            swal("请输入学校代码");
+            $("#login_btn").prop("disabled", false);
+            $("#login_btn").text("登录");
+            return;
+        }
+
+        $("#login_btn").text("获取学校信息...");
+
+        try {
+            const resp = await fetch(`https://hagateway.zykj.org/api/discovery/${schoolCode}`);
+            if (!resp.ok) throw new Error("学校代码无效");
+
+            const schoolInfo = await resp.json();
+            schoolName = schoolInfo.name;
+
+            // 检查 server 是否为 https
+            if (!schoolInfo.server.startsWith("https://")) {
+                swal("学校服务器环境不支持自适应登录，请联系作者");
+                $("#login_btn").prop("disabled", false);
+                $("#login_btn").text("登录");
+                return;
+            }
+
+            currentApiBaseUrl = schoolInfo.server;
+            // 更新标题显示
+            $("#welc").html(`自适应登录 - ${schoolName}`);
+        } catch (e) {
+            swal("学校代码无效或网络错误");
+            $("#login_btn").prop("disabled", false);
+            $("#login_btn").text("登录");
+            return;
+        }
+    } else {
+        // 省锡中不清空标题
+    }
 
     // 登录获取 token
-    let data = await fetch("https://zyapi.loshop.com.cn/api/TokenAuth/Login", {
+    let data = await fetch(`${currentApiBaseUrl}/api/TokenAuth/Login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1072,7 +1130,7 @@ login_btn.onclick = async () => {
         $("#login_btn").prop("disabled", false);
         $("#login_btn").text("登录");
 
-        $("#welc").html(message);
+        $("#welc").html(`自适应登录 - ${schoolName}<br><small class="text-danger">${message}</small>`);
     } else {
         let token = data.result.accessToken;
         let refreshToken = data.result.refreshToken;
@@ -1080,7 +1138,7 @@ login_btn.onclick = async () => {
         let refreshExpireTime = Date.now() + data.result.refreshExpireInSeconds * 1000; // refreshToken 过期时间
 
         // 获取用户信息
-        let info = await fetch("https://zyapi.loshop.com.cn/api/services/app/User/GetInfoAsync", {
+        let info = await fetch(`${currentApiBaseUrl}/api/services/app/User/GetInfoAsync`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -1101,8 +1159,16 @@ login_btn.onclick = async () => {
         localStorage.setItem("refreshToken", refreshToken);
         localStorage.setItem("tokenExpire", expireTime);
         localStorage.setItem("refreshTokenExpire", refreshExpireTime);
+        localStorage.setItem("apiBaseUrl", currentApiBaseUrl);
+        localStorage.setItem("apiBaseOrigin", currentApiBaseUrl); // 保存原始地址用于判断 special 路径
 
-        if (accountVal[0] !== "2") {
+        // 更新全局变量
+        window.API_BASE_URL = currentApiBaseUrl;
+        window.API_BASE_BASE_URL = currentApiBaseUrl; // 用于判断是否使用 special 路径
+        window.proxyBaseUrl = currentApiBaseUrl.replace("//", "//picAgent.");
+
+        // 只有省锡中（非自适应）才判断教师账号
+        if (schoolSelect !== "other" && accountVal[0] !== "2") {
             swal({
                 title: '提示',
                 text: '你的账号为非学生账号，功能受限(没适配)，仅可查看随身答和下载应用'
@@ -1142,7 +1208,8 @@ function startTokenRefresh() {
         if (tokenExpire - now <= 10000 && now < refreshTokenExpire) {
             try {
                 let refreshToken = localStorage.getItem("refreshToken");
-                let data = await fetch("https://zyapi.loshop.com.cn/api/TokenAuth/RefreshToken", {
+                let apiBaseUrl = localStorage.getItem("apiBaseUrl") || "https://zyapi.loshop.com.cn";
+                let data = await fetch(`${apiBaseUrl}/api/TokenAuth/RefreshToken`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -1164,7 +1231,7 @@ function startTokenRefresh() {
 
                     console.log("Token 已刷新:", newToken);
                     var iframe = document.getElementById("zxzl_iframe");
-                    iframe.src = "https://zyapi.loshop.com.cn/navPage.html?apiHost=https://zyapi.loshop.com.cn&apiToken=" + localStorage.getItem("token") + "#\/list?messageType=pager";
+                    iframe.src = `https://zyapi.loshop.com.cn/navPage.html?apiHost=${apiBaseUrl}&apiToken=` + localStorage.getItem("token") + "#\/list?messageType=pager";
 
                 }
             } catch (e) {
@@ -1189,7 +1256,7 @@ async function noteGetAll(page = 1) {
 
         // 第一次加载才请求 API
         if (allNotes.length === 0) {
-            let response = await fetch("https://zyapi.loshop.com.cn/CloudNotes/api/Notes/GetAll", {
+            let response = await fetch(`${window.API_BASE_URL}/CloudNotes/api/Notes/GetAll`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -1293,7 +1360,7 @@ async function noteDownload(fileId, name) {
     if (this.downloading) return;
     this.downloading = 1;
 
-    let response = await fetch(`https://zyapi.loshop.com.cn/special/GetByFileId?${aesEncrypt("fileId=" + fileId)}`, {
+    let response = await fetch(getCloudNoteApiPath("Resources/GetByFileId", aesEncrypt("fileId=" + fileId)), {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -1633,7 +1700,7 @@ async function noteDownload2(fileId, name) {
     if (this.downloading) return;
     this.downloading = 1;
 
-    let response = await fetch(`https://zyapi.loshop.com.cn/special/GetByFileId?${aesEncrypt("fileId=" + fileId)}`, {
+    let response = await fetch(`${window.API_BASE_URL}/special/GetByFileId?${aesEncrypt("fileId=" + fileId)}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -1704,7 +1771,7 @@ function shellsort(data) {
 }
 
 async function quoraInit() {
-    let data = await fetch(`https://zyapi.loshop.com.cn/api/services/app/Quora/GetCatalogs`, {
+    let data = await fetch(`${window.API_BASE_URL}/api/services/app/Quora/GetCatalogs`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -1720,7 +1787,7 @@ async function quoraInit() {
 }
 
 async function mistakeInit() {
-    let data = await fetch(`https://zyapi.loshop.com.cn/api/services/app/MistakeBook/GetMyMistakeBooksAsync`, {
+    let data = await fetch(`${window.API_BASE_URL}/api/services/app/MistakeBook/GetMyMistakeBooksAsync`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -1737,13 +1804,13 @@ async function mistakeInit() {
 
 
 zxzl_login.onclick = async () => {
-    window.open("https://zyapi.loshop.com.cn/navPage.html?apiHost=https:\/\/zyapi.loshop.com.cn&apiToken=" + localStorage.getItem("token") + "#\/list?messageType=pager");
+    window.open(`https://zyapi.loshop.com.cn/navPage.html?apiHost=${window.API_BASE_URL}&apiToken=` + localStorage.getItem("token") + "#\/list?messageType=pager");
 }
 
 function zxzl_set_url() {
 
     var iframe = document.getElementById("zxzl_iframe");
-    iframe.src = "https://zyapi.loshop.com.cn/navPage.html?apiHost=https://zyapi.loshop.com.cn&apiToken=" + localStorage.getItem("token") + "#\/list?messageType=pager";
+    iframe.src = `https://zyapi.loshop.com.cn/navPage.html?apiHost=${window.API_BASE_URL}&apiToken=` + localStorage.getItem("token") + "#\/list?messageType=pager";
 
 }
 
@@ -2676,7 +2743,7 @@ async function show_lesson() {
     while (true) {
         try {
             const res = await $.ajax({
-                url: `https://zyapi.loshop.com.cn/SelfStudy/api/Learn/LearningCourses?page=${page}`,
+                url: `${window.API_BASE_URL}/SelfStudy/api/Learn/LearningCourses?page=${page}`,
                 type: "get",
                 dataType: "json",
                 beforeSend: function (request) {
@@ -2764,7 +2831,7 @@ function show_class() {
     if (!courseId) return;
 
     $.ajax({
-        url: "https://zyapi.loshop.com.cn/SelfStudy/api/Learn/CourseDetail?id=" + courseId,
+        url: `${window.API_BASE_URL}/SelfStudy/api/Learn/CourseDetail?id=` + courseId,
         type: "get",
         dataType: "json",
         beforeSend: function (request) {
@@ -2853,7 +2920,7 @@ function set_ids() {
 function show_page() {
     $.ajax({
         url:
-            "https://zyapi.loshop.com.cn/SelfStudy/api/learn/readContent?catalogId=" +
+            `${window.API_BASE_URL}/SelfStudy/api/learn/readContent?catalogId=` +
             $("#cid_input").val() +
             "&courseId=" +
             $("#id_input").val(),
@@ -2997,7 +3064,7 @@ async function getUserId() {
     const token = localStorage.getItem("token");
     if (!token) throw new Error("localStorage 中未找到 token");
 
-    const url = "https://zyapi.loshop.com.cn/api/services/app/User/GetInfoAsync";
+    const url = `${window.API_BASE_URL}/api/services/app/User/GetInfoAsync`;
     const headers = {
         "Accept": "application/json, text/plain, */*",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
@@ -3043,7 +3110,7 @@ async function uploadFile(file, userId, fc, nonceInput, fileNameInput) {
     const token = localStorage.getItem("token");
     const json_data = { fc: V_MAP[fc], fr: G_MAP[fr], ft, fe, fo, nonce, ts, sign };
 
-    const resp = await fetch("https://zyapi.loshop.com.cn/api/services/app/ObjectStorage/GenerateTokenV2Async", {
+    const resp = await fetch(`${window.API_BASE_URL}/api/services/app/ObjectStorage/GenerateTokenV2Async`, {
         method: "POST",
         headers: { "Accept": "application/json", "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(json_data)
@@ -3112,10 +3179,25 @@ async function uploadFileBtn() {
 
 
 // ============ 获取笔记列表 ============
+// 判断是否使用省锡中 special 路径
+// special 路径只存在于 zyapi.loshop.com.cn（省锡中代理服务器）
+function useSpecialPath() {
+    const baseUrl = window.API_BASE_BASE_URL || window.API_BASE_URL;
+    // special 路径只支持省锡中（通过 zyapi.loshop.com.cn 访问）
+    return baseUrl && baseUrl.includes("zyapi.loshop.com.cn");
+}
+
+// 获取云笔记 API 路径（自适应：省锡中使用 special 代理，其他学校使用原路径）
+function getCloudNoteApiPath(endpoint, encryptedParams) {
+    const specialUrl = `${window.API_BASE_URL}/special/${endpoint}?${encryptedParams}`;
+    const directUrl = `${window.API_BASE_URL}/CloudNotes/api/${endpoint}?${encryptedParams}`;
+    return useSpecialPath() ? specialUrl : directUrl;
+}
+
 async function loadNotes(parentId = "0") {
     const params = `parentid=${parentId}&isNoteNode=true`;
     const encryptedParams = aesEncrypt(params);
-    const apiUrl = `https://zyapi.loshop.com.cn/special/GetByParentId?${encryptedParams}`;
+    const apiUrl = getCloudNoteApiPath("Notes/GetByParentId", encryptedParams);
 
     try {
         const res = await fetch(apiUrl, {
@@ -3227,7 +3309,7 @@ async function fetchExams(page = 1) {
     currentExamPage = page;
     const skipCount = (currentExamPage - 1) * examPageSize;
 
-    const res = await fetch('https://zyapi.loshop.com.cn/api/services/app/Task/GetStudentTaskListAsync', {
+    const res = await fetch(`${window.API_BASE_URL}/api/services/app/Task/GetStudentTaskListAsync`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -3370,20 +3452,20 @@ async function showExamQuestions(examName, examId) {
 }
 
 async function fetchExamTask(token, examId) {
-    const res = await fetch(`https://zyapi.loshop.com.cn/api/services/app/Task/GetExamTaskAsync?id=${examId}`, {
+    const res = await fetch(`${window.API_BASE_URL}/api/services/app/Task/GetExamTaskAsync?id=${examId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     return await res.json();
 }
 
 async function fetchQstAnswerView(qstId) {
-    const res = await fetch(`https://zyapi.loshop.com.cn/Question/View/${qstId}?showAnalysis=true`);
+    const res = await fetch(`${window.API_BASE_URL}/Question/View/${qstId}?showAnalysis=true`);
     return await res.text();
 }
 
 
 
-// 调用 /special/Search API 搜索
+// 调用云笔记搜索 API（自适应）
 async function searchNotes(page = 1) {
     if (searchNotesRunning) return;
     searchNotesRunning = true;
@@ -3398,8 +3480,8 @@ async function searchNotes(page = 1) {
         const query = `fileName=${searchKeyword}`;
         const encryptedQuery = aesEncrypt(query);
 
-        // 直接把加密字符串放在 ? 后面
-        const url = `https://zyapi.loshop.com.cn/special/Search?${encryptedQuery}`;
+        // 自适应：省锡中使用 special 代理，其他学校使用原路径
+        const url = getCloudNoteApiPath("Notes/Search", encryptedQuery);
 
         const response = await fetch(url, {
             method: "GET",
