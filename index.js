@@ -1063,6 +1063,10 @@ function onSchoolChange() {
 
 // 登录
 login_btn.onclick = async () => {
+    // 清除 localStorage 中的 API URL
+    localStorage.removeItem("apiBaseUrl");
+    localStorage.removeItem("apiBaseOrigin");
+
     $("#login_btn").prop("disabled", true);
     $("#login_btn").text("登录中");
 
@@ -1360,7 +1364,7 @@ async function noteDownload(fileId, name) {
     if (this.downloading) return;
     this.downloading = 1;
 
-    let response = await fetch(getCloudNoteApiPath("Resources/GetByFileId", aesEncrypt("fileId=" + fileId)), {
+    let response = await fetch(getCloudNoteApiPath("GetByFileId", aesEncrypt("fileId=" + fileId)), {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -3197,7 +3201,7 @@ function getCloudNoteApiPath(endpoint, encryptedParams) {
 async function loadNotes(parentId = "0") {
     const params = `parentid=${parentId}&isNoteNode=true`;
     const encryptedParams = aesEncrypt(params);
-    const apiUrl = getCloudNoteApiPath("Notes/GetByParentId", encryptedParams);
+    const apiUrl = getCloudNoteApiPath("GetByParentId", encryptedParams);
 
     try {
         const res = await fetch(apiUrl, {
@@ -3481,7 +3485,7 @@ async function searchNotes(page = 1) {
         const encryptedQuery = aesEncrypt(query);
 
         // 自适应：省锡中使用 special 代理，其他学校使用原路径
-        const url = getCloudNoteApiPath("Notes/Search", encryptedQuery);
+        const url = getCloudNoteApiPath("Search", encryptedQuery);
 
         const response = await fetch(url, {
             method: "GET",
