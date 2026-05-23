@@ -1095,6 +1095,7 @@ login_btn.onclick = async () => {
 
             const schoolInfo = await resp.json();
             schoolName = schoolInfo.name;
+            if (schoolInfo.server=="http://sxzsyxx.api.zykj.org") schoolInfo.server = "https://zyapi-sxzsyxx.loshop.com.cn";
 
             // 检查 server 是否为 https
             if (!schoolInfo.server.startsWith("https://")) {
