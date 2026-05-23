@@ -11,7 +11,7 @@
     let currentExamPage = 1;
     const examPageSize = 20;
     let totalExamCount = 0;
-    window.currentExamPage = currentExamPage;F
+    window.currentExamPage = currentExamPage;
     window.examPageSize = examPageSize;
     window.totalExamCount = totalExamCount;
 
