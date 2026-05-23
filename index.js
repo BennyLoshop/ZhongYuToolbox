@@ -11,7 +11,7 @@
     let currentExamPage = 1;
     const examPageSize = 20;
     let totalExamCount = 0;
-    window.currentExamPage = currentExamPage;
+    window.currentExamPage = currentExamPage;F
     window.examPageSize = examPageSize;
     window.totalExamCount = totalExamCount;
 
@@ -3194,7 +3194,7 @@ function useSpecialPath() {
 // 获取云笔记 API 路径（自适应：省锡中使用 special 代理，其他学校使用原路径）
 function getCloudNoteApiPath(endpoint, encryptedParams) {
     const specialUrl = `${window.API_BASE_URL}/special/${endpoint}?${encryptedParams}`;
-    const directUrl = `${window.API_BASE_URL}/CloudNotes/api/${endpoint}?${encryptedParams}`;
+    const directUrl = `${window.API_BASE_URL}/CloudNotes/api/Notes/${endpoint}?${encryptedParams}`;
     return useSpecialPath() ? specialUrl : directUrl;
 }
 
