@@ -1364,7 +1364,7 @@ async function noteDownload(fileId, name) {
     if (this.downloading) return;
     this.downloading = 1;
 
-    let response = await fetch(getCloudNoteApiPath("GetByFileId", aesEncrypt("fileId=" + fileId)), {
+    let response = await fetch(getCloudNoteApiPathR("GetByFileId", aesEncrypt("fileId=" + fileId)), {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -3191,10 +3191,15 @@ function useSpecialPath() {
     return baseUrl && baseUrl.includes("zyapi.loshop.com.cn");
 }
 
-// 获取云笔记 API 路径（自适应：省锡中使用 special 代理，其他学校使用原路径）
+// 获取云笔记 API 路径（自适应：省锡中使用 special 代理，其他学校使用原路径）Resources
 function getCloudNoteApiPath(endpoint, encryptedParams) {
     const specialUrl = `${window.API_BASE_URL}/special/${endpoint}?${encryptedParams}`;
     const directUrl = `${window.API_BASE_URL}/CloudNotes/api/Notes/${endpoint}?${encryptedParams}`;
+    return useSpecialPath() ? specialUrl : directUrl;
+}
+function getCloudNoteApiPathR(endpoint, encryptedParams) {
+    const specialUrl = `${window.API_BASE_URL}/special/${endpoint}?${encryptedParams}`;
+    const directUrl = `${window.API_BASE_URL}/CloudNotes/api/Resources/${endpoint}?${encryptedParams}`;
     return useSpecialPath() ? specialUrl : directUrl;
 }
 
