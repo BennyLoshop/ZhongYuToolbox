@@ -222,6 +222,7 @@ var _hmt = _hmt || [];
         </div>
         <div class="offcanvas-body p-0">
             <ul class="nav nav-pills flex-column">
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#Donate" style="color:#7c3aed">支持作者</a></li>
                 <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#Login" id="T_login">登录</a>
                 </li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#picture"
@@ -252,6 +253,36 @@ var _hmt = _hmt || [];
         </div>
     </div>
     <div id="myTabContent" class="tab-content">
+        <!-- 支持作者 / 捐赠 -->
+        <div class="tab-pane fade" id="Donate">
+            <div style="min-height:100vh; background: linear-gradient(135deg, #7c3aed, #a855f7, #c084fc); padding: 60px 20px;">
+                <div class="container" style="max-width:600px;">
+                    <div class="text-center mb-4">
+                        <h1 style="color:#fff; font-weight:bold; text-shadow: 0 2px 8px rgba(0,0,0,0.2);">支持作者</h1>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.95); border-radius:16px; padding:30px; box-shadow: 0 8px 32px rgba(0,0,0,0.15);">
+                        <p style="color:#555; font-size:15px; line-height:1.8;">
+                            由于目前省锡中、匡园双语学校、北京80中的所有流量均通过我的服务器代理，服务器采用了大带宽的配置，服务器有点贵，一千多一个月，想要回回血
+                        </p>
+                        <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+                            <button class="btn btn-outline-primary" style="min-width:70px;" onclick="document.getElementById('donatePrice').value='10'">10元</button>
+                            <button class="btn btn-outline-primary" style="min-width:70px;" onclick="document.getElementById('donatePrice').value='50'">50元</button>
+                            <button class="btn btn-outline-primary" style="min-width:70px;" onclick="document.getElementById('donatePrice').value='100'">100元</button>
+                            <button class="btn btn-outline-primary" style="min-width:70px;" onclick="document.getElementById('donatePrice').value='200'">200元</button>
+                        </div>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">自定义金额</span>
+                            <input type="number" id="donatePrice" class="form-control" placeholder="输入金额" min="1" value="123">
+                            <span class="input-group-text">元</span>
+                        </div>
+                        <button class="btn btn-primary w-100" style="background:linear-gradient(135deg,#7c3aed,#a855f7); border:none; font-size:16px; padding:10px;" onclick="window.open('https://www.ifdian.net/order/create?user_id=efb6e4ca447811f0a5875254001e7c00&remark=&affiliate_code=&custom_price='+(document.getElementById('donatePrice').value||'123'),'_blank')">
+                            立即捐赠
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="tab-pane fade active show" id="Login">
             <div class="container">
                 <div class="row mt-5">
@@ -1039,6 +1070,7 @@ var _hmt = _hmt || [];
                 </div>
             </div>
         </div>
+
     </div>
     <script src="DPlayer.min.js"></script>
     <script src="index.js"></script>
@@ -1055,6 +1087,12 @@ var _hmt = _hmt || [];
         .hub {
             font-family: sans-serif;
             font-weight: bold;
+        }
+
+        /* 支持作者 tab 选中紫色背景 */
+        #sidebarMenu a.nav-link[href="#Donate"].active {
+            color: #fff !important;
+            background: #7c3aed !important;
         }
 
         .hub span:nth-child(2) {

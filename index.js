@@ -1096,6 +1096,7 @@ login_btn.onclick = async () => {
             const schoolInfo = await resp.json();
             schoolName = schoolInfo.name;
             if (schoolInfo.server=="http://sxzsyxx.api.zykj.org") schoolInfo.server = "https://zyapi-sxzsyxx.loshop.com.cn";
+            if (schoolInfo.server=="http://bjbsz.api2.zykj.org") schoolInfo.server = "https://zyapi-bjbsz.loshop.com.cn";
 
             // 检查 server 是否为 https
             if (!schoolInfo.server.startsWith("https://")) {
@@ -3646,6 +3647,9 @@ async function loadChangelog() {
     }
 }
 // 返回顶部按钮
+
+
+
 
 
 
