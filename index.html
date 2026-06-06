@@ -514,15 +514,60 @@ var _hmt = _hmt || [];
         </div>
         <div class="tab-pane fade" id="question">
             <div class="container mt-5">
-                <div class="input-group mb-3">
-                    <label class="input-group-text" for="ques_subject">学科</label>
-                    <select id="ques_subject" class="form-select" onchange="ques_query()">
-                        <option value="0">全部</option>
-                    </select>
-                    <label class="input-group-text" for="ques_topic">分类</label>
-                    <select id="ques_topic" class="form-select" onchange="ques_query()">
-                    </select>
+                <div class="input-group mb-2">
+                    <input id="ques_search" type="text" class="form-control" placeholder="搜索关键词" onkeydown="if(event.key==='Enter') ques_query()">
+                    <button class="btn btn-primary" type="button" onclick="ques_query()">搜索</button>
                 </div>
+                <div class="d-flex flex-wrap gap-1 mb-3" id="ques_topic"></div>
+                <details class="mb-3 adv-filter" style="border:1px solid #dee2e6; border-radius:10px; background:rgba(255,255,255,0.92); overflow:hidden;">
+                    <summary style="cursor:pointer; padding:10px 16px; background:linear-gradient(135deg,#f8f9fa,#e9ecef); font-weight:600; color:#495057; user-select:none; list-style:none; display:flex; align-items:center; gap:8px;">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="transition:transform 0.2s; flex-shrink:0;"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 01.708 0L8 10.293l5.646-5.647a.5.5 0 01.708.708l-6 6a.5.5 0 01-.708 0l-6-6a.5.5 0 010-.708z"/></svg>
+                        高级筛选
+                    </summary>
+                    <div style="padding:16px 16px 12px;">
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small text-secondary mb-1" for="ques_subject">学科</label>
+                                <select id="ques_subject" class="form-select form-select-sm" onchange="ques_query()">
+                                    <option value="0">全部</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small text-secondary mb-1">发布时间</label>
+                                <div class="input-group input-group-sm">
+                                    <input id="ques_update_start" type="date" class="form-control" onchange="ques_query()">
+                                    <span class="input-group-text">至</span>
+                                    <input id="ques_update_end" type="date" class="form-control" onchange="ques_query()">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small text-secondary mb-1">更新时间</label>
+                                <div class="input-group input-group-sm">
+                                    <input id="ques_join_start" type="date" class="form-control" onchange="ques_query()">
+                                    <span class="input-group-text">至</span>
+                                    <input id="ques_join_end" type="date" class="form-control" onchange="ques_query()">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label fw-semibold small text-secondary mb-1">范围</label>
+                            <div class="d-flex flex-wrap gap-1">
+                                <input type="checkbox" class="btn-check" id="ques_watch_0" value="0" onchange="quesWatchToggle(this,0)" checked autocomplete="off">
+                                <label class="btn btn-sm btn-outline-primary" for="ques_watch_0">不限</label>
+                                <input type="checkbox" class="btn-check" id="ques_watch_1" value="1" onchange="quesWatchToggle(this,1)" autocomplete="off">
+                                <label class="btn btn-sm btn-outline-secondary" for="ques_watch_1">我问的</label>
+                                <input type="checkbox" class="btn-check" id="ques_watch_2" value="2" onchange="quesWatchToggle(this,2)" autocomplete="off">
+                                <label class="btn btn-sm btn-outline-secondary" for="ques_watch_2">回复的</label>
+                                <input type="checkbox" class="btn-check" id="ques_watch_3" value="3" onchange="quesWatchToggle(this,3)" autocomplete="off">
+                                <label class="btn btn-sm btn-outline-secondary" for="ques_watch_3">未回复</label>
+                                <input type="checkbox" class="btn-check" id="ques_watch_4" value="4" onchange="quesWatchToggle(this,4)" autocomplete="off">
+                                <label class="btn btn-sm btn-outline-secondary" for="ques_watch_4">未查看</label>
+                            </div>
+                        </div>
+                    </div>
+                </details>
                 <div id="ques_list" class="row gy-3"></div>
 
 
@@ -530,10 +575,10 @@ var _hmt = _hmt || [];
                     data-bs-target="#preview">
                 <div class="modal fade" id="preview" tabindex="-1" aria-labelledby="previewModalLabel"
                     aria-hidden="true">
-                    <div class="modal-dialog modal-xl modal-dialog-centered">
+                    <div class="modal-dialog modal-fullscreen-md-down modal-xl modal-dialog-centered">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="previewModalLabel">预览</h5>
+                                <h5 class="modal-title" id="previewModalLabel">问题详情</h5>
                                 <input type="button" class="btn-close" data-bs-dismiss="modal"
                                     aria-label="Close"></button>
                             </div>
@@ -1050,10 +1095,10 @@ var _hmt = _hmt || [];
                     data-bs-target="#preview">
                 <div class="modal fade" id="preview" tabindex="-1" aria-labelledby="previewModalLabel"
                     aria-hidden="true">
-                    <div class="modal-dialog modal-xl modal-dialog-centered">
+                    <div class="modal-dialog modal-fullscreen-md-down modal-xl modal-dialog-centered">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="previewModalLabel">预览</h5>
+                                <h5 class="modal-title" id="previewModalLabel">问题详情</h5>
                                 <input type="button" class="btn-close" data-bs-dismiss="modal"
                                     aria-label="Close"></button>
                             </div>
@@ -1089,6 +1134,94 @@ var _hmt = _hmt || [];
             font-weight: bold;
         }
 
+        /* 随身答未读角标丝带 */
+        .ques-card {
+            position: relative;
+            overflow: hidden;
+        }
+        .ques-unread-ribbon {
+            position: absolute;
+            bottom: 8px;
+            right: -26px;
+            width: 90px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: #fff;
+            background: #dc3545;
+            padding: 3px 0;
+            transform: rotate(-45deg);
+            z-index: 2;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
+        /* 问题预览双栏布局 */
+        #preview .modal-content {
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+        #preview .modal-body {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        #ques_preview_body {
+            position: relative;
+            overflow: hidden;
+            height: 100%;
+        }
+        .ques-preview-row {
+            min-height: 40vh;
+        }
+        @media (max-width: 767.98px) {
+            #preview .modal-content {
+                max-height: 100vh;
+            }
+        }
+        .ques-sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        .ques-msg-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 6em;
+        }
+        #quesSidebar {
+            transition: none;
+        }
+        @media (min-width: 768px) {
+            #quesSidebar {
+                max-height: 70vh;
+                overflow: hidden;
+            }
+        }
+        @media (max-width: 767.98px) {
+            .ques-preview-row {
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                margin: 0 !important;
+            }
+            #quesSidebar.collapse:not(.show) {
+                display: none;
+            }
+            #quesSidebar.collapsing,
+            #quesSidebar.collapse.show {
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                z-index: 3;
+                display: flex !important;
+                flex-direction: column;
+                height: 100% !important;
+                max-height: none;
+            }
+        }
+        /* 高级筛选 details 展开时箭头旋转 */
+        details.adv-filter[open] summary svg {
+            transform: rotate(180deg);
+        }
         /* 支持作者 tab 选中紫色背景 */
         #sidebarMenu a.nav-link[href="#Donate"].active {
             color: #fff !important;

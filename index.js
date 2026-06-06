@@ -2,6 +2,15 @@
     window.API_BASE_URL = localStorage.getItem("apiBaseUrl") || "https://zyapi.loshop.com.cn";
     window.API_BASE_BASE_URL = localStorage.getItem("apiBaseOrigin") || "https://zyapi.loshop.com.cn";
     window.proxyBaseUrl = localStorage.getItem("apiBaseUrl") ? localStorage.getItem("apiBaseUrl").replace("//", "//picAgent.") : "https://zyapi.loshop.com.cn/picAgent/";
+    window.proxyUrl = (url) => {
+        return window.proxyBaseUrl + url;
+    };
+    window.proxyImgSrc = (url) => {
+        if (url && typeof url === 'string' && url.startsWith('http://sxz.alicdn.zykj.org/')) {
+            return url.replace('http://sxz.alicdn.zykj.org/', 'https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/');
+        }
+        return window.proxyBaseUrl + url;
+    };
     let breadcrumbStack = [
         { id: "0", name: "根目录" }
     ];
@@ -650,7 +659,7 @@ async function loadPictures() {
     `;
 
         items.forEach(item => {
-            const imgUrl = window.proxyBaseUrl + item.picture;
+            const imgUrl = proxyImgSrc(item.picture);
             const aUrl = "https://zyapi.loshop.com.cn/picAgent/" + encodeURIComponent(item.picture);
 
             html += `
@@ -775,18 +784,54 @@ const quesTake = 12;
 let quesLoading = false;
 let quesAllLoaded = false;
 let quesParams = {};  // 保存当前的查询条件
+function quesTopicSelect(el) {
+    $('#ques_topic .ques-topic-tab').removeClass('btn-primary active').addClass('btn-outline-secondary');
+    $(el).removeClass('btn-outline-secondary').addClass('btn-primary active');
+    ques_query();
+}
+function quesWatchToggle(el, val) {
+    if (val === 0) {
+        if (el.checked) {
+            for (let i = 1; i <= 4; i++) document.getElementById('ques_watch_' + i).checked = false;
+        } else {
+            // 不限不允许取消，至少选一个
+            el.checked = true;
+            return;
+        }
+    } else {
+        if (el.checked) {
+            document.getElementById('ques_watch_0').checked = false;
+        }
+    }
+    ques_query();
+}
 async function ques_query() {
     quesSkip = 0;
     quesAllLoaded = false;
     $(ques_list).html("");
 
-    const topic = $(ques_topic).val();
+    const topic = $('#ques_topic .active').data('topic') || '';
     const subject = $(ques_subject).val();
+    const keyword = document.getElementById("ques_search").value.trim();
+    const updateStart = document.getElementById("ques_update_start").value;
+    const updateEnd = document.getElementById("ques_update_end").value;
+    const joinStart = document.getElementById("ques_join_start").value;
+    const joinEnd = document.getElementById("ques_join_end").value;
 
     quesParams = {
+        "keyword": keyword,
         "orderBy": 0,
         "skip": quesSkip,
-        "take": quesTake
+        "take": quesTake,
+        "updateTime": {
+            "start": updateStart ? updateStart + "T00:00:00" : "",
+            "end": updateEnd ? updateEnd + "T23:59:59" : ""
+        },
+        "joinTime": {
+            "start": joinStart ? joinStart + "T00:00:00" : "",
+            "end": joinEnd ? joinEnd + "T23:59:59" : ""
+        },
+        "justWatch": document.getElementById('ques_watch_0').checked ? [0] : [1,2,3,4].filter(v => document.getElementById('ques_watch_'+v).checked)
     };
     quesParams.catalogId = parseInt(topic, 10);
     quesParams.topicId = parseInt(subject, 10);
@@ -824,6 +869,7 @@ async function loadMoreQuestions() {
         <div class="col-12 col-md-6 col-lg-4">
             <div class="ques-card card h-100" 
                 style="cursor:pointer; background:rgba(255,255,255,0.9); box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                ${item.unRead ? '<div class="ques-unread-ribbon">未读</div>' : ''}
                 <div class="card-body d-flex align-items-center mb-2">
                     <img src="${item.askUserPhoto || 'https://s4.anilist.co/file/anilistcdn/user/avatar/large/default.png'}" 
                         class="avatar me-2" 
@@ -834,14 +880,21 @@ async function loadMoreQuestions() {
                     </div>
                 </div>
                 <div class="card-img-container" style="max-height:250px; overflow:hidden;">
-                    <img src="${window.proxyBaseUrl + item.snapshot}" class="card-img-bottom w-100" style="object-fit:cover;">
+                    <img src="${proxyImgSrc(item.snapshot)}" class="card-img-bottom w-100" style="object-fit:cover;">
                 </div>
             </div>
         </div>
     `);
 
         col.find('.ques-card').data("id", item.id);
-        col.find('.ques-card').click(() => previewQuestion(item.id));
+        col.find('.ques-card').click(() => {
+            col.find('.ques-unread-ribbon').remove();
+            fetch(`${window.API_BASE_URL}/api/services/app/Quora/ResetReadState?sessionId=${item.id}`, {
+                method: "GET",
+                headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+            });
+            previewQuestion(item.id);
+        });
 
         $(ques_list).append(col);
     });
@@ -872,31 +925,73 @@ async function previewQuestion(sessionId) {
     });
     let json = await resp.json();
     let data = json.result || [];
-    let s = "";
+    if (!data.length) return;
 
-    data.forEach((d, i) => {
-        s += `
-        <div class="carousel-item ${i === 0 ? "active" : ""}" data-link="${d.content}">
-            <img src="${window.proxyBaseUrl}${d.snapShot}" class="d-block w-100">
-            <div style="padding-bottom:0" class="carousel-caption d-none d-md-block">
-                <p>第${i + 1}/${data.length}页 发布者： ${d.userName}</p>
-            </div>
-        </div>`;
-    });
+    // 左侧消息列表
+    let listHtml = data.map((d, i) => {
+        let badgeClass = d.isPrimary ? 'bg-success' : 'bg-secondary';
+        let badgeText = d.isPrimary ? '公开' : '不公开';
+        return `
+        <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center ${i === 0 ? 'active' : ''}"
+             data-index="${i}"
+             data-snapshot="${d.snapShot}"
+             data-content="${d.content}"
+             data-username="${d.userName}"
+             data-sendtime="${d.sendTime}"
+             onclick="quesSelectMsg(this)">
+            <span class="ques-msg-name">${d.userName}</span>
+            <span class="badge rounded-pill ${badgeClass}">${badgeText}</span>
+        </button>`;
+    }).join('');
+
+    // 右侧详情（默认首条）
+    let first = data[0];
+    let rightHtml = data.length ? `
+        <div id="ques_detail_user" class="fw-bold mb-1">${first.userName}</div>
+        <div id="ques_detail_time" class="text-muted small mb-3">${first.sendTime}</div>
+        <img id="ques_detail_img" src="${proxyImgSrc(first.snapShot)}"
+             data-content="${first.content}"
+             class="img-fluid rounded"
+             style="max-height:55vh; object-fit:contain;">
+    ` : '';
 
     $(ques_preview_body).html(`
-        <div id="ques_preview_pic" class="carousel slide carousel-dark" data-bs-interval="false">
-            <div class="carousel-inner">${s}</div>
-            <button class="carousel-control-prev" type="button" data-bs-target="#ques_preview_pic" data-bs-slide="prev">
-                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Previous</span>
+        <div class="row g-0 position-relative ques-preview-row" style="margin:-16px;">
+            <button id="quesToggleBtn" class="btn btn-sm btn-outline-secondary d-md-none position-absolute top-0 start-0 m-2" style="z-index:1;" type="button" data-bs-toggle="collapse" data-bs-target="#quesSidebar">
+                ☰ 问题列表
             </button>
-            <button class="carousel-control-next" type="button" data-bs-target="#ques_preview_pic" data-bs-slide="next">
-                <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Next</span>
-            </button>
+            <div id="quesSidebar" class="col-md-4 col-lg-3 bg-body-tertiary border-end collapse d-md-flex flex-column">
+                <div class="px-3 py-2 fw-bold fs-5 border-bottom d-flex justify-content-between align-items-center">
+                    问题列表
+                    <button class="btn-close d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#quesSidebar" aria-label="Close"></button>
+                </div>
+                <div class="list-group list-group-flush ques-sidebar-scroll">
+                    ${listHtml}
+                </div>
+            </div>
+            <div class="col-md-8 col-lg-9 d-flex flex-column align-items-center justify-content-center p-4">
+                ${rightHtml}
+            </div>
         </div>`);
+
     ques_preview.click();
+
+    // 窄屏：sidebar 展开/收起时切换按钮可见性
+    $('#quesSidebar').off('show.bs.collapse hidden.bs.collapse').on('show.bs.collapse', function () {
+        $('#quesToggleBtn').hide();
+    }).on('hidden.bs.collapse', function () {
+        $('#quesToggleBtn').show();
+    });
+}
+
+// 选中消息切换右侧详情
+function quesSelectMsg(el) {
+    $('.list-group-item').removeClass('active');
+    $(el).addClass('active');
+    $('#ques_detail_user').text(el.dataset.username);
+    $('#ques_detail_time').text(el.dataset.sendtime);
+    $('#ques_detail_img').attr('src', proxyImgSrc(el.dataset.snapshot));
+    $('#ques_detail_img').attr('data-content', el.dataset.content);
 }
 
 // 🔸 核心：监听整页滚动
@@ -911,7 +1006,7 @@ window.addEventListener('scroll', () => {
 });
 
 ques_download.onclick = function () {
-    download($('.carousel-item.active')[0].dataset.link, 'test.zip')
+    download($('#ques_detail_img').attr('data-content'), 'test.zip');
 };
 
 async function mistake_query() {
@@ -968,7 +1063,7 @@ async function mistake_query() {
                 }
 
                 // 🔸 使用 proxyBaseUrl 通过 fetch 下载 zip 文件
-                const zipUrl = window.proxyBaseUrl + noteSrc;
+                const zipUrl = proxyUrl(noteSrc);
                 const zipResponse = await fetch(zipUrl);
                 if (!zipResponse.ok) {
                     swal("下载失败");
@@ -1392,15 +1487,21 @@ async function noteDownload(fileId, name) {
         if (isThumbnail) {
             pageMap[page].thumbnail = {
                 url: item.ossImageUrl.startsWith('http')
-                    ? window.proxyBaseUrl + item.ossImageUrl
-                    : window.proxyBaseUrl + "http://friday-note.oss-cn-hangzhou.aliyuncs.com/" + item.ossImageUrl,
+                    ? proxyUrl(item.ossImageUrl)
+                    : proxyUrl("http://friday-note.oss-cn-hangzhou.aliyuncs.com/" + item.ossImageUrl),
+                imgSrc: item.ossImageUrl.startsWith('http')
+                    ? proxyImgSrc(item.ossImageUrl)
+                    : proxyImgSrc("http://friday-note.oss-cn-hangzhou.aliyuncs.com/" + item.ossImageUrl),
                 ext
             };
         } else {
             pageMap[page].originals.push({
                 url: item.ossImageUrl.startsWith('http')
-                    ? window.proxyBaseUrl + item.ossImageUrl
-                    : window.proxyBaseUrl + "http://friday-note.oss-cn-hangzhou.aliyuncs.com/" + item.ossImageUrl,
+                    ? proxyUrl(item.ossImageUrl)
+                    : proxyUrl("http://friday-note.oss-cn-hangzhou.aliyuncs.com/" + item.ossImageUrl),
+                imgSrc: item.ossImageUrl.startsWith('http')
+                    ? proxyImgSrc(item.ossImageUrl)
+                    : proxyImgSrc("http://friday-note.oss-cn-hangzhou.aliyuncs.com/" + item.ossImageUrl),
                 ext
             });
         }
@@ -1653,7 +1754,7 @@ async function noteDownload(fileId, name) {
                 $('#thumbImg').hide();
                 hideLoading();
             };
-            thumbImg.src = pageData.thumbnail.url;
+            thumbImg.src = pageData.thumbnail.imgSrc || pageData.thumbnail.url;
         }
         // 原图加载
         for (let j = 0; j < pageData.originals.length; j++) {
@@ -1668,7 +1769,7 @@ async function noteDownload(fileId, name) {
                 $('#origImgLoading' + j).hide();
                 hideLoading();
             };
-            origImg.src = pageData.originals[j].url;
+            origImg.src = pageData.originals[j].imgSrc || pageData.originals[j].url;
         }
         if (totalToLoad === 0) {
             $('#notePreviewLoading').hide();
@@ -1732,8 +1833,8 @@ async function noteDownload2(fileId, name) {
         ind += 1;
         let ossUrl = list[i].ossImageUrl;
         let url = ossUrl.startsWith('http')
-            ? window.proxyBaseUrl + ossUrl
-            : window.proxyBaseUrl + "http://friday-note.oss-cn-hangzhou.aliyuncs.com/" + ossUrl;
+            ? proxyUrl(ossUrl)
+            : proxyUrl("http://friday-note.oss-cn-hangzhou.aliyuncs.com/" + ossUrl);
 
         $("#ball_T").text(`正在获取 ${parseInt(ind / list.length * 100)}%`);
         if (url.match(/\.(jpg|jpeg|png|webp)$/)) {
@@ -1787,7 +1888,8 @@ async function quoraInit() {
     data = data.result;
     $('#ques_topic').html("");
     for (i in data) {
-        $(ques_topic).append(`<option value="${data[i].id}">${data[i].name}</option>`)
+        const isFirst = i == 0;
+        $(ques_topic).append(`<button class="btn btn-sm ques-topic-tab ${isFirst ? 'btn-primary active' : 'btn-outline-secondary'}" data-topic="${data[i].id}" onclick="quesTopicSelect(this)">${data[i].name}</button>`)
     }
     ques_query();
 }
@@ -1889,7 +1991,7 @@ function download_note() {
     }
 
     // 下载文件并展示进度
-    let url = window.proxyBaseUrl + note_link;
+    let url = proxyUrl(note_link);
     let filename = note_link.split('/').pop();
 
     fetch(url)
@@ -1991,7 +2093,7 @@ function download_test() {
     }
 
     // 下载文件并展示进度
-    let url = window.proxyBaseUrl + test_link;
+    let url = proxyUrl(test_link);
     let filename = test_link.split('/').pop();
 
     fetch(url)
@@ -2093,7 +2195,7 @@ function download_learn() {
     }
 
     // 下载文件并展示进度
-    let url = window.proxyBaseUrl + learn_link;
+    let url = proxyUrl(learn_link);
     let filename = learn_link.split('/').pop();
 
     fetch(url)
@@ -2196,7 +2298,7 @@ function download_user() {
     }
 
     // 下载文件并展示进度
-    let url = window.proxyBaseUrl + user_link;
+    let url = proxyUrl(user_link);
     let filename = user_link.split('/').pop();
 
     fetch(url)
@@ -2298,7 +2400,7 @@ function download_mistake() {
     }
 
     // 下载文件并展示进度
-    let url = window.proxyBaseUrl + mistake_link;
+    let url = proxyUrl(mistake_link);
     let filename = mistake_link.split('/').pop();
 
     fetch(url)
@@ -2400,7 +2502,7 @@ function download_web() {
     }
 
     // 下载文件并展示进度
-    let url = window.proxyBaseUrl + web_link;
+    let url = proxyUrl(web_link);
     let filename = web_link.split('/').pop();
 
     fetch(url)
@@ -2502,7 +2604,7 @@ function download_chat() {
     }
 
     // 下载文件并展示进度
-    let url = window.proxyBaseUrl + chat_link;
+    let url = proxyUrl(chat_link);
     let filename = chat_link.split('/').pop();
 
     fetch(url)
@@ -2571,7 +2673,7 @@ function reload_token() {
 }
 
 function show_class_table() {
-    window.open("http:\/\/sxz.school.zykj.org/navPage.html?apiHost=https:\/\/zyapi.loshop.com.cn&apiToken=" + localStorage.getItem("token") + "#\/class");
+    window.open(proxyUrl("http:\/\/sxz.school.zykj.org/navPage.html?apiHost=https:\/\/zyapi.loshop.com.cn&apiToken=" + localStorage.getItem("token") + "#\/class"));
 }
 
 function show_online_test() {
@@ -2592,7 +2694,7 @@ function change_object() {
         leng = ob.length;
         for (i = 0; i < ob.length; i++) {
             var name = ob[i].name;
-            var link = window.proxyBaseUrl + ob[i].data;
+            var link = proxyUrl(ob[i].data);
             var div = document.getElementById('show');
             //div.innerHTML += '<video src="' + link + '" type="video/mp4"  width="100%" controls="controls" loop="-1">';
             var new_tag_p = document.createElement("p");
@@ -2616,7 +2718,7 @@ function change_video() {
             console.log("Pass");
         } else {
             var name = ob[i].src;
-            var link = window.proxyBaseUrl + ob[i].src;
+            var link = proxyUrl(ob[i].src);
             var div = document.getElementById('show');
             //div.innerHTML += '<video src="' + link + '" type="video/mp4"  width="100%" controls="controls" loop="-1">';
             var new_tag_p = document.createElement("p");
@@ -2644,7 +2746,7 @@ function change_div() {
                 var div = document.getElementById('show');
                 //div.innerHTML += '<video src="' + link + '" type="video/mp4"  width="100%" controls="controls" loop="-1">';
                 var new_tag_p = document.createElement("p");
-                new_tag_p.innerHTML += '附件：' + name + '&emsp;<a teype="button"  class="down" onclick="down_file(this)" type="' + window.proxyBaseUrl + link + '">点击下载</a>' + '&emsp;<a teype="button"  class="down" onclick="set_ppt(this)" type="' + link + '">在线查看</a>';
+                new_tag_p.innerHTML += '附件：' + name + '&emsp;<a teype="button"  class="down" onclick="down_file(this)" type="' + proxyUrl(link) + '">点击下载</a>' + '&emsp;<a teype="button"  class="down" onclick="set_ppt(this)" type="' + link + '">在线查看</a>';
                 //div.innerHTML += '<p>' + name + '&emsp;<a teype="button"  class="down" onclick="set_object(this)" type="' + link + '">点击</a>';
                 div.insertBefore(new_tag_p, ob[i]);
                 ob[i].remove();
@@ -2655,7 +2757,7 @@ function change_div() {
             }
             if (ob[i].getAttribute("data-type") == "pdf") {
                 var name = ob[i].getAttribute("data-name");
-                var link = window.proxyBaseUrl + ob[i].getAttribute("data-url");
+                var link = proxyUrl(ob[i].getAttribute("data-url"));
                 var div = document.getElementById('show');
                 //div.innerHTML += '<video src="' + link + '" type="video/mp4"  width="100%" controls="controls" loop="-1">';
                 var new_tag_p = document.createElement("p");
@@ -2672,7 +2774,7 @@ function change_div() {
                 console.log("sdsafd");
                 ob[i].querySelector('img').setAttribute('width', '100%');
                 ob[i].setAttribute('data-type', 'image-block-changed');
-                ob[i].querySelector('img').src = window.proxyBaseUrl + ob[i].querySelector('img').src;
+                ob[i].querySelector('img').src = proxyImgSrc(ob[i].querySelector('img').src);
                 changed += 1;
                 console.log(name);
                 console.log(link);
@@ -2789,7 +2891,7 @@ function renderCourseCards() {
         const isDisabled = item.status === 0;
         let coverUrl = "";
         if (window.proxyBaseUrl) {
-            coverUrl = window.proxyBaseUrl + item.cover;
+            coverUrl = proxyImgSrc(item.cover);
         } else {
             coverUrl = "https://zyapi.loshop.com.cn/picAgent/" + item.cover;
         }
@@ -2948,7 +3050,11 @@ function show_page() {
 }
 
 function down_file(data) {
-    window.open(data.type);
+    let url = data.type;
+    if (url && typeof url === 'string' && url.startsWith('http://')) {
+        url = proxyUrl(url);
+    }
+    window.open(url);
     console.log(data.type);
 }
 

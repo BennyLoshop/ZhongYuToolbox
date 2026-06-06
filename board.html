@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <title>画板</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link id="theme" rel="stylesheet" href="bootswatch.min.css">
+    <link rel="stylesheet" href="sweetalert.css">
+    <script src="jquery.min.js"></script>
+    <script src="bootstrap.bundle.min.js"></script>
+    <script src="sweetalert-dev.js"></script>
+    <script src="jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #boardCanvas {
+            display: block;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        }
+        .board-toolbar .btn {
+            font-size: 0.8rem;
+        }
+        .board-toolbar .form-range {
+            width: 80px;
+        }
+        .board-toolbar .form-control-color {
+            width: 36px;
+            height: 30px;
+            padding: 2px;
+        }
+        .board-toolbar .vr {
+            margin: 0 2px;
+        }
+    </style>
+</head>
+
+<body class="bg-dark">
+
+    <!-- 工具栏 -->
+    <nav class="navbar navbar-dark bg-dark border-bottom border-secondary board-toolbar py-1 px-2 flex-shrink-0" style="--bs-bg-opacity:1;">
+        <div class="d-flex align-items-center gap-1 flex-wrap w-100">
+
+            <!-- 工具选择 -->
+            <div class="btn-group btn-group-sm me-1">
+                <button class="btn btn-outline-light active" id="btnSelect" title="选择/移动 (V)">&#9758; 选择</button>
+                <button class="btn btn-outline-light" id="btnDraw" title="画笔 (P)">&#9998; 画笔</button>
+                <button class="btn btn-outline-light" id="btnText" title="文字 (T)">&#10746; 文字</button>
+                <button class="btn btn-outline-info" id="btnImage" title="插入图片">&#128247; 图片</button>
+            </div>
+
+            <!-- 形状 -->
+            <div class="btn-group btn-group-sm me-1">
+                <button class="btn btn-outline-light" id="btnRect" title="矩形 (R)">&#9644; 矩形</button>
+            </div>
+
+            <div class="vr bg-secondary"></div>
+
+            <!-- 颜色与粗细 -->
+            <input type="color" class="form-control form-control-color" id="colorPicker" value="#000000" title="颜色">
+            <span class="text-light small me-1">粗细</span>
+            <input type="range" class="form-range" id="strokeWidth" min="1" max="40" value="4">
+            <span class="text-light small" id="widthVal" style="min-width:1.5em;">4</span>
+
+            <div class="vr bg-secondary"></div>
+
+            <!-- 编辑 -->
+            <div class="btn-group btn-group-sm me-1">
+                <button class="btn btn-outline-secondary" id="btnUndo" title="撤销 (Ctrl+Z)">&#8630;</button>
+                <button class="btn btn-outline-secondary" id="btnRedo" title="重做 (Ctrl+Y)">&#8631;</button>
+                <button class="btn btn-outline-danger" id="btnDelete" title="删除选中 (Del)">&#10006;</button>
+                <button class="btn btn-outline-warning" id="btnClear" title="清空画板">清空</button>
+            </div>
+
+            <div class="vr bg-secondary"></div>
+
+            <!-- 保存/关闭 -->
+            <div class="btn-group btn-group-sm ms-auto">
+                <button class="btn btn-success" id="btnExport" title="导出保存">&#128190; 导出</button>
+                <button class="btn btn-outline-danger" id="btnClose" title="关闭">&#10060;</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 画布容器 -->
+    <div class="flex-fill d-flex align-items-center justify-content-center overflow-auto p-3 bg-dark" id="canvasWrap"
+        style="--bs-bg-opacity:1;">
+        <div id="canvasInner">
+            <canvas id="boardCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- 缩放控制 -->
+    <div class="position-fixed bottom-0 end-0 m-3 z-3">
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-dark" id="zoomOut">−</button>
+            <button class="btn btn-dark disabled" id="zoomLabel" style="min-width:3.5em;">100%</button>
+            <button class="btn btn-dark" id="zoomIn">+</button>
+            <button class="btn btn-secondary" id="zoomFit">适应</button>
+        </div>
+    </div>
+
+    <!-- 隐藏的文件输入 -->
+    <input type="file" accept="image/*" id="imgInput" class="d-none">
+
+    <script>
+        // ==================== Canvas Init ====================
+        const CANVAS_W = 2200;
+        const CANVAS_H = 1395;
+
+        const canvasEl = document.getElementById('boardCanvas');
+        const fabricCanvas = new fabric.Canvas(canvasEl, {
+            width: CANVAS_W,
+            height: CANVAS_H,
+            backgroundColor: '#ffffff',
+            selection: true,
+            preserveObjectStacking: true,
+            stopContextMenu: true,
+            fireRightClick: false,
+        });
+
+        let currentTool = 'select';
+        let currentMode = null;
+        let isDrawing = false;
+        let drawStart = null;
+        let zoomLevel = 1;
+        let undoStack = [];
+        let redoStack = [];
+        const MAX_HISTORY = 50;
+
+        // ==================== Zoom ====================
+        function applyZoom() {
+            // 用 Fabric 原生 setZoom 处理坐标映射
+            fabricCanvas.setZoom(zoomLevel);
+            // 同步 canvas 元素 CSS 尺寸，让视觉与坐标一致
+            canvasEl.style.width = Math.round(CANVAS_W * zoomLevel) + 'px';
+            canvasEl.style.height = Math.round(CANVAS_H * zoomLevel) + 'px';
+            $('#zoomLabel').text(Math.round(zoomLevel * 100) + '%');
+        }
+
+        function fitZoom() {
+            var wrap = document.getElementById('canvasWrap');
+            var pad = 32;
+            var maxW = wrap.clientWidth - pad;
+            var maxH = wrap.clientHeight - pad;
+            zoomLevel = Math.min(maxW / CANVAS_W, maxH / CANVAS_H, 1);
+            applyZoom();
+        }
+
+        $('#zoomIn').click(function () { zoomLevel = Math.min(zoomLevel + 0.1, 3); applyZoom(); });
+        $('#zoomOut').click(function () { zoomLevel = Math.max(zoomLevel - 0.1, 0.2); applyZoom(); });
+        $('#zoomFit').click(fitZoom);
+
+        document.getElementById('canvasWrap').addEventListener('wheel', function (e) {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                zoomLevel += e.deltaY < 0 ? 0.05 : -0.05;
+                zoomLevel = Math.min(3, Math.max(0.2, zoomLevel));
+                applyZoom();
+            }
+        }, { passive: false });
+
+        // ==================== Undo/Redo ====================
+        function saveState() {
+            var json = fabricCanvas.toJSON(['id']);
+            undoStack.push(json);
+            if (undoStack.length > MAX_HISTORY) undoStack.shift();
+            redoStack = [];
+        }
+
+        function undo() {
+            if (undoStack.length < 2) return;
+            var current = undoStack.pop();
+            redoStack.push(current);
+            var prev = undoStack[undoStack.length - 1];
+            fabricCanvas.loadFromJSON(prev, function () {
+                fabricCanvas.renderAll();
+                refreshToolState();
+            });
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+            var next = redoStack.pop();
+            undoStack.push(next);
+            fabricCanvas.loadFromJSON(next, function () {
+                fabricCanvas.renderAll();
+                refreshToolState();
+            });
+        }
+
+        saveState();
+        fabricCanvas.on('object:modified', function () { if (!isDrawing) saveState(); });
+        fabricCanvas.on('path:created', function () { saveState(); });
+
+        // ==================== Tool Switching ====================
+        function setTool(tool) {
+            currentTool = tool;
+            $('.board-toolbar .btn').removeClass('active');
+            fabricCanvas.isDrawingMode = false;
+            fabricCanvas.selection = true;
+            fabricCanvas.defaultCursor = 'default';
+            currentMode = null;
+
+            fabricCanvas.off('mouse:down');
+            fabricCanvas.off('mouse:move');
+            fabricCanvas.off('mouse:up');
+
+            switch (tool) {
+                case 'select':
+                    $('#btnSelect').addClass('active');
+                    break;
+                case 'draw':
+                    $('#btnDraw').addClass('active');
+                    fabricCanvas.isDrawingMode = true;
+                    fabricCanvas.freeDrawingBrush.color = $('#colorPicker').val();
+                    fabricCanvas.freeDrawingBrush.width = parseInt($('#strokeWidth').val());
+                    fabricCanvas.selection = false;
+                    currentMode = 'draw';
+                    break;
+                case 'text':
+                    $('#btnText').addClass('active');
+                    currentMode = 'text';
+                    fabricCanvas.defaultCursor = 'crosshair';
+                    break;
+                case 'rect':
+                    $('#btnRect').addClass('active');
+                    currentMode = 'rect';
+                    fabricCanvas.defaultCursor = 'crosshair';
+                    break;
+                case 'image':
+                    $('#btnImage').addClass('active');
+                    break;
+            }
+        }
+
+        // ==================== Mouse handlers ====================
+        fabricCanvas.on('mouse:down', function (opt) {
+            if (currentMode !== 'rect' && currentMode !== 'text') return;
+            if (!opt.pointer) return;
+
+            if (currentMode === 'text') {
+                addText(opt.pointer.x, opt.pointer.y);
+                saveState();
+                setTool('select');
+                return;
+            }
+            if (currentMode === 'rect') {
+                isDrawing = true;
+                drawStart = { x: opt.pointer.x, y: opt.pointer.y };
+            }
+        });
+
+        fabricCanvas.on('mouse:up', function (opt) {
+            if (!isDrawing || !drawStart || !opt.pointer) return;
+            isDrawing = false;
+
+            if (currentMode === 'rect') {
+                var color = $('#colorPicker').val();
+                var sw = parseInt($('#strokeWidth').val());
+                var rect = new fabric.Rect({
+                    left: Math.min(drawStart.x, opt.pointer.x),
+                    top: Math.min(drawStart.y, opt.pointer.y),
+                    width: Math.abs(opt.pointer.x - drawStart.x),
+                    height: Math.abs(opt.pointer.y - drawStart.y),
+                    fill: 'transparent',
+                    stroke: color,
+                    strokeWidth: sw,
+                });
+                fabricCanvas.add(rect);
+                fabricCanvas.setActiveObject(rect);
+                saveState();
+            }
+            drawStart = null;
+        });
+
+        // ==================== Text ====================
+        function addText(x, y) {
+            var color = $('#colorPicker').val();
+            var textbox = new fabric.Textbox('双击输入文字', {
+                left: x,
+                top: y,
+                width: 300,
+                fontSize: 40,
+                fill: color,
+                fontFamily: 'sans-serif',
+                editable: true,
+            });
+            fabricCanvas.add(textbox);
+            fabricCanvas.setActiveObject(textbox);
+            textbox.enterEditing();
+            textbox.selectAll();
+        }
+
+        // ==================== Image ====================
+        function insertImage(dataUrl) {
+            fabric.Image.fromURL(dataUrl, function (img) {
+                var maxW = CANVAS_W * 0.8;
+                var maxH = CANVAS_H * 0.8;
+                if (img.width > maxW || img.height > maxH) {
+                    var ratio = Math.min(maxW / img.width, maxH / img.height);
+                    img.scale(ratio);
+                }
+                img.set({
+                    left: CANVAS_W / 2 - (img.width * img.scaleX) / 2,
+                    top: CANVAS_H / 2 - (img.height * img.scaleY) / 2,
+                });
+                fabricCanvas.add(img);
+                fabricCanvas.setActiveObject(img);
+                saveState();
+            });
+        }
+
+        // ==================== Toolbar events ====================
+        $('#btnSelect').click(function () { setTool('select'); });
+        $('#btnDraw').click(function () { setTool('draw'); });
+        $('#btnText').click(function () { setTool('text'); });
+        $('#btnRect').click(function () { setTool('rect'); });
+
+        $('#btnImage').click(function () {
+            setTool('image');
+            $('#imgInput').click();
+        });
+
+        $('#imgInput').change(function (e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (ev) { insertImage(ev.target.result); };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        });
+
+        $('#btnUndo').click(undo);
+        $('#btnRedo').click(redo);
+
+        $('#btnDelete').click(function () {
+            var active = fabricCanvas.getActiveObject();
+            if (active) {
+                fabricCanvas.remove(active);
+                fabricCanvas.discardActiveObject();
+                saveState();
+            }
+        });
+
+        $('#btnClear').click(function () {
+            swal({
+                title: '确认清空?',
+                text: '画板上所有内容将丢失',
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '确认清空',
+                cancelButtonText: '取消',
+            }, function (confirmed) {
+                if (confirmed) {
+                    fabricCanvas.clear();
+                    fabricCanvas.backgroundColor = '#ffffff';
+                    undoStack = [];
+                    redoStack = [];
+                    saveState();
+                }
+            });
+        });
+
+        // ==================== Color & Stroke ====================
+        $('#colorPicker').change(function () {
+            var color = $(this).val();
+            if (fabricCanvas.isDrawingMode) {
+                fabricCanvas.freeDrawingBrush.color = color;
+            }
+            var active = fabricCanvas.getActiveObject();
+            if (active) {
+                if (active.type === 'textbox' || active.type === 'i-text') {
+                    active.set('fill', color);
+                } else if (active.stroke !== undefined) {
+                    active.set('stroke', color);
+                }
+                fabricCanvas.renderAll();
+            }
+        });
+
+        $('#strokeWidth').on('input', function () {
+            var w = parseInt($(this).val());
+            $('#widthVal').text(w);
+            if (fabricCanvas.isDrawingMode) {
+                fabricCanvas.freeDrawingBrush.width = w;
+            }
+            var active = fabricCanvas.getActiveObject();
+            if (active && active.strokeWidth !== undefined) {
+                active.set('strokeWidth', w);
+                fabricCanvas.renderAll();
+            }
+        });
+
+        // ==================== Keyboard ====================
+        $(document).keydown(function (e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (fabricCanvas.getActiveObject() && fabricCanvas.getActiveObject().isEditing) return;
+
+            switch (e.key.toLowerCase()) {
+                case 'v': if (!e.ctrlKey) setTool('select'); break;
+                case 'p': if (!e.ctrlKey) setTool('draw'); break;
+                case 't': if (!e.ctrlKey) setTool('text'); break;
+                case 'r': if (!e.ctrlKey) setTool('rect'); break;
+                case 'delete':
+                case 'backspace':
+                    var a = fabricCanvas.getActiveObject();
+                    if (a) { fabricCanvas.remove(a); fabricCanvas.discardActiveObject(); saveState(); }
+                    break;
+                case 'z': if (e.ctrlKey) { e.preventDefault(); undo(); } break;
+                case 'y': if (e.ctrlKey) { e.preventDefault(); redo(); } break;
+            }
+        });
+
+        // Paste image
+        $(document).on('paste', function (e) {
+            var items = e.originalEvent.clipboardData.items;
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                if (item.type.indexOf('image/') === 0) {
+                    var blob = item.getAsFile();
+                    var reader = new FileReader();
+                    reader.onload = function (ev) { insertImage(ev.target.result); };
+                    reader.readAsDataURL(blob);
+                    break;
+                }
+            }
+        });
+
+        // ==================== Selection sync ====================
+        fabricCanvas.on('selection:created', refreshToolState);
+        fabricCanvas.on('selection:updated', refreshToolState);
+        fabricCanvas.on('selection:cleared', refreshToolState);
+
+        function refreshToolState() {
+            var active = fabricCanvas.getActiveObject();
+            if (active) {
+                if (active.fill && active.type !== 'rect') {
+                    $('#colorPicker').val(active.fill);
+                } else if (active.stroke) {
+                    $('#colorPicker').val(active.stroke);
+                }
+                if (active.strokeWidth !== undefined) {
+                    $('#strokeWidth').val(active.strokeWidth);
+                    $('#widthVal').text(active.strokeWidth);
+                }
+            }
+        }
+
+        // ==================== Export ====================
+        $('#btnExport').click(async function () {
+            var $btn = $('#btnExport');
+            $btn.prop('disabled', true).text('导出中...');
+
+            try {
+                var dataUrl = fabricCanvas.toDataURL({
+                    format: 'jpeg',
+                    quality: 0.92,
+                    multiplier: 1,
+                    width: CANVAS_W,
+                    height: CANVAS_H,
+                });
+                var resp = await fetch(dataUrl);
+                var canvasBlob = await resp.blob();
+
+                var zipResp = await fetch('blackbroad.zip');
+                if (!zipResp.ok) throw new Error('下载 blackbroad.zip 失败');
+                var zipArrayBuf = await zipResp.arrayBuffer();
+
+                var zip = await JSZip.loadAsync(zipArrayBuf);
+                var targetPath = 'res/image/7769755f-f199-4371-a655-63ea2edcf153.jpg';
+                if (!zip.file(targetPath)) throw new Error('ZIP 中找不到 ' + targetPath);
+                zip.file(targetPath, canvasBlob, { binary: true });
+
+                var outBlob = await zip.generateAsync({
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: { level: 6 },
+                });
+
+                var url = URL.createObjectURL(outBlob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'blackbroad_export.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                swal('导出成功', 'blackbroad_export.zip 已开始下载', 'success');
+            } catch (err) {
+                console.error(err);
+                swal('导出失败', err.message, 'error');
+            } finally {
+                $btn.prop('disabled', false).html('&#128190; 导出');
+            }
+        });
+
+        $('#btnClose').click(function () {
+            swal({
+                title: '确定关闭?',
+                text: '未导出的内容将丢失',
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '关闭',
+                cancelButtonText: '取消',
+            }, function (confirmed) {
+                if (confirmed) window.close();
+            });
+        });
+
+        // ==================== Init ====================
+        setTool('select');
+        fitZoom();
+        $(window).resize(fitZoom);
+    </script>
+</body>
+
+</html>
