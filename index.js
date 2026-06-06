@@ -810,7 +810,8 @@ async function ques_query() {
     quesAllLoaded = false;
     $(ques_list).html("");
 
-    const topic = $('#ques_topic .active').data('topic') || '';
+    let topicRaw = $('#ques_topic .active').data('topic');
+    const topic = (topicRaw !== undefined && topicRaw !== null) ? topicRaw : '';
     const subject = $(ques_subject).val();
     const keyword = document.getElementById("ques_search").value.trim();
     const updateStart = document.getElementById("ques_update_start").value;

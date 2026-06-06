@@ -19,9 +19,12 @@
             height: 100vh;
             overflow: hidden;
         }
+        #canvasInner {
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        }
         #boardCanvas {
             display: block;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
         }
         .board-toolbar .btn {
             font-size: 0.8rem;
@@ -135,11 +138,13 @@
 
         // ==================== Zoom ====================
         function applyZoom() {
-            // 用 Fabric 原生 setZoom 处理坐标映射
+            // 只用 Fabric 原生 setZoom 处理坐标映射
             fabricCanvas.setZoom(zoomLevel);
-            // 同步 canvas 元素 CSS 尺寸，让视觉与坐标一致
-            canvasEl.style.width = Math.round(CANVAS_W * zoomLevel) + 'px';
-            canvasEl.style.height = Math.round(CANVAS_H * zoomLevel) + 'px';
+            // 用外层容器裁剪视觉大小，不动 canvas 元素的 CSS 尺寸
+            $('#canvasInner').css({
+                width: Math.round(CANVAS_W * zoomLevel) + 'px',
+                height: Math.round(CANVAS_H * zoomLevel) + 'px'
+            });
             $('#zoomLabel').text(Math.round(zoomLevel * 100) + '%');
         }
 
@@ -206,10 +211,6 @@
             fabricCanvas.selection = true;
             fabricCanvas.defaultCursor = 'default';
             currentMode = null;
-
-            fabricCanvas.off('mouse:down');
-            fabricCanvas.off('mouse:move');
-            fabricCanvas.off('mouse:up');
 
             switch (tool) {
                 case 'select':
