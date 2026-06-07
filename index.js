@@ -951,6 +951,7 @@ async function previewQuestion(sessionId) {
         <div id="ques_detail_user" class="fw-bold mb-1">${first.userName}</div>
         <div id="ques_detail_time" class="text-muted small mb-3">${first.sendTime}</div>
         <img id="ques_detail_img" src="${proxyImgSrc(first.snapShot)}"
+             data-raw-snapshot="${first.snapShot}"
              data-content="${first.content}"
              class="img-fluid rounded"
              style="max-height:55vh; object-fit:contain;">
@@ -992,6 +993,7 @@ function quesSelectMsg(el) {
     $('#ques_detail_user').text(el.dataset.username);
     $('#ques_detail_time').text(el.dataset.sendtime);
     $('#ques_detail_img').attr('src', proxyImgSrc(el.dataset.snapshot));
+    $('#ques_detail_img').attr('data-raw-snapshot', el.dataset.snapshot);
     $('#ques_detail_img').attr('data-content', el.dataset.content);
 }
 
@@ -3234,7 +3236,7 @@ async function uploadFile(file, userId, fc, nonceInput, fileNameInput) {
     const result = data.result;
 
     const client = new OSS({
-        region: "oss-cn-hangzhou",
+        region: result.region || "oss-cn-hangzhou",
         accessKeyId: result.accessKeyId,
         accessKeySecret: result.accessKeySecret,
         stsToken: result.securityToken,
@@ -3244,7 +3246,8 @@ async function uploadFile(file, userId, fc, nonceInput, fileNameInput) {
     const remote_file = `${fc}/${fr}/${userId}/${dateStr}/${nonce}/${remoteFileName}`;
     await client.put(remote_file, file);
 
-    return `https://${result.bucket}.oss-cn-hangzhou.aliyuncs.com/${remote_file}`;
+    const endpoint = (result.endpoint || `https://${result.bucket}.oss-cn-hangzhou.aliyuncs.com`);
+    return (endpoint.replace(/\/+$/, '') + '/' + remote_file);
 }
 
 // 页面加载时获取用户ID并更新前缀

@@ -14,6 +14,7 @@
     <script src="aliyun-oss-sdk.min.js"></script>
     <script src="jspdf.umd.min.js"></script>
     <script src="crypto-js.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link rel="stylesheet" type="text/css" href="sweetalert.css">
     <script type="text/javascript" src="sweetalert-dev.js"></script>
 </head>
@@ -65,7 +66,7 @@ var _hmt = _hmt || [];
 
             position: fixed;
             /* 固定在屏幕上 */
-            top: 50vh;
+            top: 50vh;yhu 
             /* 顶部 50% */
             left: 50%;
             /* 左侧 50% */
@@ -239,6 +240,7 @@ var _hmt = _hmt || [];
                         onclick="mistakeInit()">错题本</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#question"
                         onclick="quoraInit()">随身答</a></li>
+
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#apps">下载应用</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#lesson2" onclick="show_lesson()"
                         id="lesson-tab">优客畅学</a></li>
@@ -588,10 +590,93 @@ var _hmt = _hmt || [];
                             <div class="modal-footer justify-content-between">
                                 <input id="ques_download" type="button" class="btn btn-secondary" style="float:left"
                                     value="下载">
-                                <input type="button" class="btn btn-secondary" data-bs-dismiss="modal" value="关闭">
+                                <div>
+                                    <input type="button" class="btn btn-primary" value="回复" onclick="openBoardModal()">
+                                    <input type="button" class="btn btn-secondary" data-bs-dismiss="modal" value="关闭">
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <!-- 画板回复 Modal -->
+        <div class="modal fade" id="boardModal" tabindex="-1" aria-labelledby="boardModalLabel" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-fullscreen">
+                <div class="modal-content">
+                    <div class="modal-header py-2 px-3" style="background:#212529; border-bottom:1px solid #495057;">
+                        <h5 class="modal-title text-light" id="boardModalLabel">画板回复</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+                    </div>
+                    <div class="modal-body p-0 d-flex flex-column" style="height:calc(100vh - 56px); background:#f8f9fa;">
+                        <!-- 画板工具栏 -->
+                        <nav class="navbar navbar-dark bg-dark border-bottom border-secondary py-1 px-2 flex-shrink-0" style="--bs-bg-opacity:1;">
+                            <div class="d-flex align-items-center gap-1 flex-wrap w-100">
+                                <div class="btn-group btn-group-sm me-1">
+                                    <button class="btn btn-outline-light active" id="btnSelect" title="选择/移动 (V)">选择</button>
+                                    <button class="btn btn-outline-light" id="btnDraw" title="画笔 (P)">画笔</button>
+                                    <button class="btn btn-outline-light" id="btnText" title="文字 (T)">文字</button>
+                                    <button class="btn btn-outline-info" id="btnImage" title="插入图片">图片</button>
+                                </div>
+                                <div class="vr bg-secondary"></div>
+                                <div class="d-flex align-items-center gap-1 me-1" id="colorSwatches">
+                                    <span class="color-swatch active" data-color="#000000" style="background:#000000" title="黑色"></span>
+                                    <span class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF" title="白色"></span>
+                                    <span class="color-swatch" data-color="#FF0000" style="background:#FF0000" title="红色"></span>
+                                    <span class="color-swatch" data-color="#0000FF" style="background:#0000FF" title="蓝色"></span>
+                                    <span class="color-swatch" data-color="#00AA00" style="background:#00AA00" title="绿色"></span>
+                                    <span class="color-swatch" data-color="#FFFF00" style="background:#FFFF00" title="黄色"></span>
+                                    <span class="color-swatch" data-color="#FF8800" style="background:#FF8800" title="橙色"></span>
+                                    <span class="color-swatch" data-color="#8800CC" style="background:#8800CC" title="紫色"></span>
+                                    <span class="color-swatch" data-color="#888888" style="background:#888888" title="灰色"></span>
+                                    <span class="color-swatch" data-color="#FF69B4" style="background:#FF69B4" title="粉色"></span>
+                                </div>
+                                <div class="vr bg-secondary"></div>
+                                <div class="btn-group btn-group-sm me-1" id="widthPresets">
+                                    <button class="btn btn-outline-light btn-sm-w active" data-width="3" title="细">细</button>
+                                    <button class="btn btn-outline-light btn-sm-w" data-width="8" title="中">中</button>
+                                    <button class="btn btn-outline-light btn-sm-w" data-width="18" title="粗">粗</button>
+                                </div>
+                                <div class="vr bg-secondary"></div>
+                                <div class="d-flex align-items-center gap-1 me-1" id="bgSwatches">
+                                    <span class="text-light small me-1">背景</span>
+                                    <span class="bg-swatch active" data-bg="#FFFFFF" style="background:#FFFFFF" title="白色"></span>
+                                    <span class="bg-swatch" data-bg="#1a1a1a" style="background:#1a1a1a" title="黑色"></span>
+                                    <span class="bg-swatch" data-bg="#1B3A1B" style="background:#1B3A1B" title="墨绿"></span>
+                                    <span class="bg-swatch" data-bg="#0D1B3E" style="background:#0D1B3E" title="墨蓝"></span>
+                                </div>
+                                <div class="vr bg-secondary"></div>
+                                <div class="btn-group btn-group-sm me-1">
+                                    <button class="btn btn-outline-secondary" id="btnUndo" title="撤销 (Ctrl+Z)">撤销</button>
+                                    <button class="btn btn-outline-secondary" id="btnRedo" title="重做 (Ctrl+Y)">重做</button>
+                                    <button class="btn btn-outline-danger" id="btnDelete" title="删除选中 (Del)">删除</button>
+                                    <button class="btn btn-outline-warning" id="btnClear" title="清空画板">清空</button>
+                                </div>
+                                <div class="vr bg-secondary"></div>
+                                <div class="d-flex align-items-center gap-1 ms-auto">
+                                    <span class="text-light small">SessionID</span>
+                                    <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary" id="boardSessionId" style="width:100px;" placeholder="1061955" readonly>
+                                    <button class="btn btn-success btn-sm" id="btnExport" title="发送到随身答">发送</button>
+                                </div>
+                            </div>
+                        </nav>
+                        <!-- 画布区域 -->
+                        <div class="flex-fill d-flex align-items-center justify-content-center overflow-auto p-3" id="canvasWrap" style="background:#fff;">
+                            <div id="canvasInner">
+                                <canvas id="boardCanvas"></canvas>
+                            </div>
+                        </div>
+                        <!-- 缩放 -->
+                        <div class="position-fixed bottom-0 end-0 m-3" style="z-index:1056;">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-dark" id="zoomOut">-</button>
+                                <button class="btn btn-dark disabled" id="zoomLabel" style="min-width:3.5em;">100%</button>
+                                <button class="btn btn-dark" id="zoomIn">+</button>
+                                <button class="btn btn-secondary" id="zoomFit">适应</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="file" accept="image/*" id="imgInput" class="d-none">
                 </div>
             </div>
         </div>
@@ -1283,6 +1368,38 @@ var _hmt = _hmt || [];
             padding-top: 4px;
             padding-bottom: 4px;
         }
+        /* ===== 画板样式 ===== */
+        #canvasInner {
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+        #boardCanvas {
+            display: block;
+        }
+        #boardModal .navbar .btn {
+            font-size: 0.8rem;
+        }
+        #boardModal .navbar .vr {
+            margin: 0 2px;
+        }
+        .color-swatch {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            border: 2px solid #555;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .color-swatch:hover { transform: scale(1.2); border-color: #fff; }
+        .color-swatch.active { border-color: #fff; box-shadow: 0 0 6px 2px rgba(255,255,255,0.6); }
+        .bg-swatch {
+            width: 20px; height: 20px;
+            border-radius: 3px;
+            border: 2px solid #555;
+            cursor: pointer;
+        }
+        .bg-swatch:hover { border-color: #fff; }
+        .bg-swatch.active { border-color: #ffc107; box-shadow: 0 0 4px 1px rgba(255,193,7,0.5); }
+        #boardModal .btn-sm-w { font-size: 0.7rem; padding: 1px 6px; }
     </style>
     <!-- 返回顶部按钮 -->
     <button id="back_to_top" class="btn btn-primary" style="
@@ -1303,6 +1420,461 @@ var _hmt = _hmt || [];
                     fill="#000000" style="fill: rgb(255, 255, 255);"></path>
             </g>
         </svg> </button>
+
+    <!-- ===== 画板脚本 ===== -->
+    <script>
+    (function(){
+        var CANVAS_W = 2200, CANVAS_H = 1395;
+        var canvasEl = document.getElementById('boardCanvas');
+        if (!canvasEl) return;
+        var fabricCanvas = new fabric.Canvas(canvasEl, {
+            width: CANVAS_W, height: CANVAS_H,
+            backgroundColor: '#ffffff',
+            selection: true, preserveObjectStacking: true,
+            stopContextMenu: true, fireRightClick: false
+        });
+        var currentTool = 'select', zoomLevel = 1;
+        var undoStack = [], redoStack = [];
+        var currentColor = '#000000', currentWidth = 3;
+        var MAX_HISTORY = 50;
+        var boardInited = false;
+
+        // ---- Zoom ----
+        function applyZoom() {
+            fabricCanvas.setZoom(zoomLevel);
+            $('#canvasInner').css({
+                width: Math.round(CANVAS_W * zoomLevel) + 'px',
+                height: Math.round(CANVAS_H * zoomLevel) + 'px'
+            });
+            $('#zoomLabel').text(Math.round(zoomLevel * 100) + '%');
+        }
+        function fitZoom() {
+            var wrap = document.getElementById('canvasWrap');
+            var pad = 32;
+            zoomLevel = Math.min((wrap.clientWidth - pad) / CANVAS_W, (wrap.clientHeight - pad) / CANVAS_H, 1);
+            applyZoom();
+        }
+
+        // ---- Undo/Redo ----
+        function saveState() {
+            var json = fabricCanvas.toJSON(['id']);
+            undoStack.push(json);
+            if (undoStack.length > MAX_HISTORY) undoStack.shift();
+            redoStack = [];
+        }
+        function undo() {
+            if (undoStack.length < 2) return;
+            var cur = undoStack.pop();
+            redoStack.push(cur);
+            fabricCanvas.loadFromJSON(undoStack[undoStack.length - 1], function () {
+                fabricCanvas.renderAll(); refreshToolState();
+            });
+        }
+        function redo() {
+            if (!redoStack.length) return;
+            var nxt = redoStack.pop();
+            undoStack.push(nxt);
+            fabricCanvas.loadFromJSON(nxt, function () {
+                fabricCanvas.renderAll(); refreshToolState();
+            });
+        }
+        saveState();
+        fabricCanvas.on('object:modified', function () { saveState(); });
+        fabricCanvas.on('path:created', function () { saveState(); });
+
+        // ---- Tool ----
+        function setTool(tool) {
+            currentTool = tool;
+            $('#boardModal .navbar .btn').removeClass('active');
+            fabricCanvas.isDrawingMode = false;
+            fabricCanvas.selection = true;
+            fabricCanvas.defaultCursor = 'default';
+            switch (tool) {
+                case 'select': $('#btnSelect').addClass('active'); break;
+                case 'draw':
+                    $('#btnDraw').addClass('active');
+                    fabricCanvas.isDrawingMode = true;
+                    fabricCanvas.freeDrawingBrush.color = currentColor;
+                    fabricCanvas.freeDrawingBrush.width = currentWidth;
+                    fabricCanvas.selection = false;
+                    break;
+                case 'text':
+                    $('#btnText').addClass('active');
+                    addText(CANVAS_W / 2 - 150, CANVAS_H / 2 - 20);
+                    saveState(); setTool('select'); return;
+                case 'image':
+                    $('#btnImage').addClass('active');
+                    break;
+            }
+        }
+        function addText(x, y) {
+            var tb = new fabric.Textbox('双击输入文字', {
+                left: x, top: y, width: 300, fontSize: 40,
+                fill: currentColor, fontFamily: 'sans-serif', editable: true
+            });
+            fabricCanvas.add(tb);
+            fabricCanvas.setActiveObject(tb);
+            tb.enterEditing();
+            tb.selectAll();
+        }
+        function insertImage(dataUrl) {
+            fabric.Image.fromURL(dataUrl, function (img) {
+                var maxW = CANVAS_W * 0.8, maxH = CANVAS_H * 0.8;
+                if (img.width > maxW || img.height > maxH) {
+                    img.scale(Math.min(maxW / img.width, maxH / img.height));
+                }
+                img.set({
+                    left: CANVAS_W / 2 - (img.width * img.scaleX) / 2,
+                    top: CANVAS_H / 2 - (img.height * img.scaleY) / 2
+                });
+                fabricCanvas.add(img);
+                fabricCanvas.setActiveObject(img);
+                saveState();
+            });
+        }
+
+        // ---- Toolbar Events ----
+        $('#btnSelect').click(function () { setTool('select'); });
+        $('#btnDraw').click(function () { setTool('draw'); });
+        $('#btnText').click(function () { setTool('text'); });
+        $('#btnImage').click(function () { setTool('image'); $('#imgInput').click(); });
+        $('#imgInput').change(function (e) {
+            var f = e.target.files[0]; if (!f) return;
+            var r = new FileReader();
+            r.onload = function (ev) { insertImage(ev.target.result); };
+            r.readAsDataURL(f); e.target.value = '';
+        });
+        $('#btnUndo').click(undo);
+        $('#btnRedo').click(redo);
+        $('#btnDelete').click(function () {
+            var a = fabricCanvas.getActiveObject();
+            if (a) { fabricCanvas.remove(a); fabricCanvas.discardActiveObject(); saveState(); }
+        });
+        $('#btnClear').click(function () {
+            swal({
+                title: '确认清空?', text: '画板上所有内容将丢失',
+                type: 'warning', showCancelButton: true,
+                confirmButtonText: '确认清空', cancelButtonText: '取消'
+            }, function (ok) {
+                if (!ok) return;
+                fabricCanvas.clear();
+                fabricCanvas.backgroundColor = '#FFFFFF';
+                fabricCanvas.renderAll();
+                undoStack = []; redoStack = [];
+                saveState();
+                $('#bgSwatches .bg-swatch').removeClass('active');
+                $('#bgSwatches .bg-swatch[data-bg="#FFFFFF"]').addClass('active');
+            });
+        });
+
+        // ---- Color / Width / BG ----
+        $('#colorSwatches').on('click', '.color-swatch', function () {
+            currentColor = $(this).data('color');
+            $('#colorSwatches .color-swatch').removeClass('active');
+            $(this).addClass('active');
+            if (fabricCanvas.isDrawingMode) fabricCanvas.freeDrawingBrush.color = currentColor;
+            var a = fabricCanvas.getActiveObject();
+            if (a) {
+                if (a.type === 'textbox' || a.type === 'i-text') a.set('fill', currentColor);
+                else if (a.stroke !== undefined) a.set('stroke', currentColor);
+                fabricCanvas.renderAll();
+            }
+        });
+        $('#widthPresets').on('click', '.btn', function () {
+            currentWidth = parseInt($(this).data('width'));
+            $('#widthPresets .btn').removeClass('active');
+            $(this).addClass('active');
+            if (fabricCanvas.isDrawingMode) fabricCanvas.freeDrawingBrush.width = currentWidth;
+            var a = fabricCanvas.getActiveObject();
+            if (a && a.strokeWidth !== undefined) { a.set('strokeWidth', currentWidth); fabricCanvas.renderAll(); }
+        });
+        $('#bgSwatches').on('click', '.bg-swatch', function () {
+            var bg = $(this).data('bg');
+            fabricCanvas.backgroundColor = bg;
+            fabricCanvas.renderAll();
+            $('#bgSwatches .bg-swatch').removeClass('active');
+            $(this).addClass('active');
+        });
+
+        // ---- Selection Sync ----
+        fabricCanvas.on('selection:created', refreshToolState);
+        fabricCanvas.on('selection:updated', refreshToolState);
+        fabricCanvas.on('selection:cleared', refreshToolState);
+
+        function refreshToolState() {
+            var a = fabricCanvas.getActiveObject();
+            if (!a) return;
+            if (a.fill && a.type !== 'rect') selectColorSwatch(a.fill);
+            else if (a.stroke) selectColorSwatch(a.stroke);
+            if (a.strokeWidth !== undefined) selectWidthPreset(a.strokeWidth);
+        }
+        function selectColorSwatch(color) {
+            currentColor = color;
+            $('#colorSwatches .color-swatch').removeClass('active');
+            $('#colorSwatches .color-swatch').each(function () {
+                if ($(this).data('color').toUpperCase() === color.toUpperCase()) $(this).addClass('active');
+            });
+        }
+        function selectWidthPreset(w) {
+            currentWidth = w;
+            $('#widthPresets .btn').removeClass('active');
+            var best = null, bestD = Infinity;
+            $('#widthPresets .btn').each(function () {
+                var d = Math.abs(parseInt($(this).data('width')) - w);
+                if (d < bestD) { bestD = d; best = $(this); }
+            });
+            if (best) best.addClass('active');
+        }
+
+        // ---- Keyboard ----
+        $(document).keydown(function (e) {
+            if (!$('#boardModal').hasClass('show')) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.target.id === 'boardSessionId') return;
+            var obj = fabricCanvas.getActiveObject();
+            if (obj && obj.isEditing) return;
+            switch (e.key.toLowerCase()) {
+                case 'v': if (!e.ctrlKey) setTool('select'); break;
+                case 'p': if (!e.ctrlKey) setTool('draw'); break;
+                case 't': if (!e.ctrlKey) setTool('text'); break;
+                case 'delete': case 'backspace':
+                    if (obj) { fabricCanvas.remove(obj); fabricCanvas.discardActiveObject(); saveState(); }
+                    break;
+                case 'z': if (e.ctrlKey) { e.preventDefault(); undo(); } break;
+                case 'y': if (e.ctrlKey) { e.preventDefault(); redo(); } break;
+            }
+        });
+
+        // ---- Paste Image ----
+        $(document).on('paste', function (e) {
+            if (!$('#boardModal').hasClass('show')) return;
+            var items = e.originalEvent.clipboardData.items;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image/') === 0) {
+                    var r = new FileReader();
+                    r.onload = function (ev) { insertImage(ev.target.result); };
+                    r.readAsDataURL(items[i].getAsFile());
+                    break;
+                }
+            }
+        });
+
+        // ---- Export: Upload to OSS + AddMessage ----
+        $('#btnExport').click(async function () {
+            var $btn = $('#btnExport');
+            var sessionId = $('#boardSessionId').val().trim();
+            if (!sessionId) { swal('请输入SessionID', '', 'warning'); return; }
+
+            $btn.prop('disabled', true).text('发送中...');
+
+            try {
+                // 1. Generate canvas images
+                var jpgUrl = fabricCanvas.toDataURL({ format: 'jpeg', quality: 0.92, multiplier: 1, width: CANVAS_W, height: CANVAS_H });
+                var pngUrl = fabricCanvas.toDataURL({ format: 'png', multiplier: 1, width: CANVAS_W, height: CANVAS_H });
+
+                var jpgResp = await fetch(jpgUrl); var jpgBlob = await jpgResp.blob();
+                var pngResp = await fetch(pngUrl); var pngBlob = await pngResp.blob();
+
+                // 2. Build ZIP
+                var zipResp = await fetch('blackbroad.zip');
+                if (!zipResp.ok) throw new Error('下载 blackbroad.zip 失败');
+                var zip = await JSZip.loadAsync(await zipResp.arrayBuffer());
+                var targetPath = 'res/image/7769755f-f199-4371-a655-63ea2edcf153.jpg';
+                if (!zip.file(targetPath)) throw new Error('ZIP中找不到目标文件');
+                zip.file(targetPath, jpgBlob, { binary: true });
+                var zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+
+                // 3. Upload both to OSS
+                var uid = window.currentUserId;
+                if (!uid) {
+                    try { uid = await getUserId(); } catch(e) { uid = '0'; }
+                }
+                var zipUrl = await uploadBoardFile(zipBlob, uid, 'blackbroad_' + Date.now() + '.zip');
+                var pngUrl2 = await uploadBoardFile(pngBlob, uid, 'snapshot_' + Date.now() + '.png');
+
+                // 4. POST AddMessage
+                var token = localStorage.getItem('token');
+                var addResp = await fetch(window.API_BASE_URL + '/api/services/app/Quora/AddMessage', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: zipUrl,
+                        sessionId: sessionId,
+                        snapshot: pngUrl2
+                    })
+                });
+                var addData = await addResp.json();
+                if (addData.success) {
+                    var boardModal = bootstrap.Modal.getInstance(document.getElementById('boardModal'));
+                    boardModal.hide();
+                    // 画板关闭后重新打开消息预览并刷新列表
+                    $('#boardModal').one('hidden.bs.modal', function () {
+                        var previewModal = new bootstrap.Modal(document.getElementById('preview'));
+                        previewModal.show();
+                        // 刷新消息列表，显示刚发送的消息
+                        if (typeof ques_focus !== 'undefined' && ques_focus) {
+                            previewQuestion(ques_focus);
+                        }
+                    });
+                    swal('发送成功', '已发送到随身答会话 ' + sessionId, 'success');
+                } else {
+                    swal('发送失败', JSON.stringify(addData.error || addData), 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                swal('发送失败', err.message, 'error');
+            } finally {
+                $btn.prop('disabled', false).text('发送');
+            }
+        });
+
+        // ---- Board-specific OSS upload using endpoint ----
+        async function uploadBoardFile(file, userId, fileName) {
+            var V_MAP = { quora_v2: 3 };
+            var G_MAP = { res: 1 };
+            var fc = 'quora_v2', fr = 'res', ft = 2, fe = '', fo = '0';
+            var nonce = generateNonce();
+            var ts = Date.now();
+            var dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            var raw = userId + '+' + fc + '+' + fr + '+' + ft + '+' + fe + '+' + fo + '+' + nonce + '+' + ts;
+            var sign = md5(raw);
+
+            var token = localStorage.getItem('token');
+            var resp = await fetch(window.API_BASE_URL + '/api/services/app/ObjectStorage/GenerateTokenV2Async', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ fc: V_MAP[fc], fr: G_MAP[fr], ft: ft, fe: fe, fo: fo, nonce: nonce, ts: ts, sign: sign })
+            });
+            var data = await resp.json();
+            if (!data.result) throw new Error('获取OSS Token失败: ' + JSON.stringify(data));
+
+            var result = data.result;
+            var client = new OSS({
+                region: result.region || 'oss-cn-hangzhou',
+                accessKeyId: result.accessKeyId,
+                accessKeySecret: result.accessKeySecret,
+                stsToken: result.securityToken,
+                bucket: result.bucket
+            });
+            var remoteFile = fc + '/' + fr + '/' + userId + '/' + dateStr + '/' + nonce + '/' + fileName;
+            await client.put(remoteFile, file);
+
+            // Use endpoint from API response
+            var endpoint = (result.endpoint || 'https://' + result.bucket + '.oss-cn-hangzhou.aliyuncs.com');
+            if (!/^https?:\/\//.test(endpoint)) endpoint = 'https://' + endpoint;
+            return endpoint.replace(/\/+$/, '') + '/' + remoteFile;
+        }
+
+        // ---- Zoom UI ----
+        $('#zoomIn').click(function () { zoomLevel = Math.min(zoomLevel + 0.1, 3); applyZoom(); });
+        $('#zoomOut').click(function () { zoomLevel = Math.max(zoomLevel - 0.1, 0.2); applyZoom(); });
+        $('#zoomFit').click(fitZoom);
+        document.getElementById('canvasWrap').addEventListener('wheel', function (e) {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                zoomLevel += e.deltaY < 0 ? 0.05 : -0.05;
+                zoomLevel = Math.min(3, Math.max(0.2, zoomLevel));
+                applyZoom();
+            }
+        }, { passive: false });
+
+        // ---- Lazy Init: init canvas when modal first shown ----
+        $('#boardModal').one('shown.bs.modal', function () {
+            if (boardInited) return;
+            boardInited = true;
+            setTool('select');
+            setTimeout(fitZoom, 100);
+            $(window).on('resize.board', function () {
+                if ($('#boardModal').hasClass('show')) fitZoom();
+            });
+            // 将 fabric 隐藏文本框移到 modal 内，避免 Bootstrap focus trap 夺走焦点
+            fabricCanvas.on('text:editing:entered', function (opt) {
+                var ta = opt.target && opt.target.hiddenTextarea;
+                if (ta && ta.parentNode !== document.getElementById('boardModal')) {
+                    document.getElementById('boardModal').appendChild(ta);
+                    ta.focus();
+                }
+            });
+        });
+        // Re-fit on each modal show, and insert pending question image
+        $('#boardModal').on('shown.bs.modal', function () {
+            if (boardInited) { setTool('select'); setTimeout(fitZoom, 100); }
+            // 插入从预览带来的问题截图（通过代理 Image + 离屏 Canvas 避免污染）
+            if (window._pendingQImg) {
+                var src = window._pendingQImg;
+                window._pendingQImg = null;
+                var qImg = new Image();
+                qImg.crossOrigin = 'anonymous';
+                qImg.onload = function () {
+                    var offC = document.createElement('canvas');
+                    offC.width = qImg.naturalWidth;
+                    offC.height = qImg.naturalHeight;
+                    offC.getContext('2d').drawImage(qImg, 0, 0);
+                    var dataUrl = offC.toDataURL();
+                    fabric.Image.fromURL(dataUrl, function (img) {
+                        var maxW = CANVAS_W * 0.85, maxH = CANVAS_H * 0.55;
+                        if (img.width > maxW || img.height > maxH) {
+                            img.scale(Math.min(maxW / img.width, maxH / img.height));
+                        }
+                        img.set({
+                            left: CANVAS_W / 2 - (img.width * img.scaleX) / 2,
+                            top: 30
+                        });
+                        fabricCanvas.add(img);
+                        saveState();
+                    });
+                };
+                qImg.onerror = function () {
+                    console.error('插入问题截图失败: 图片加载失败');
+                };
+                qImg.src = src;
+            }
+        });
+        // Clear canvas on modal close
+        $('#boardModal').on('hidden.bs.modal', function () {
+            fabricCanvas.clear();
+            fabricCanvas.backgroundColor = '#FFFFFF';
+            fabricCanvas.renderAll();
+            undoStack = []; redoStack = [];
+            saveState();
+            $('#bgSwatches .bg-swatch').removeClass('active');
+            $('#bgSwatches .bg-swatch[data-bg="#FFFFFF"]').addClass('active');
+            $('#boardSessionId').val('');
+            window._pendingQImg = null;
+        });
+
+        // ---- Open board modal from question preview ----
+        window.openBoardModal = function () {
+            if (typeof ques_focus !== 'undefined' && ques_focus) {
+                $('#boardSessionId').val(ques_focus);
+            }
+            // 捕获问题快照图片原始URL，通过代理插入（避免 canvas 污染）
+            var rawSnapshot = $('#ques_detail_img').attr('data-raw-snapshot') || '';
+            window._pendingQImg = rawSnapshot ? window.proxyUrl(rawSnapshot) : '';
+            // Close preview modal first, then show board
+            var previewEl = document.getElementById('preview');
+            var previewModal = bootstrap.Modal.getInstance(previewEl);
+            if (previewModal) {
+                previewModal.hide();
+                $('#preview').one('hidden.bs.modal', function () {
+                    var bsModal = new bootstrap.Modal(document.getElementById('boardModal'));
+                    bsModal.show();
+                });
+            } else {
+                var bsModal = new bootstrap.Modal(document.getElementById('boardModal'));
+                bsModal.show();
+            }
+        };
+    })();
+    </script>
 
 </body>
 

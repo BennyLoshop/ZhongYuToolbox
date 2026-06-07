@@ -29,16 +29,42 @@
         .board-toolbar .btn {
             font-size: 0.8rem;
         }
-        .board-toolbar .form-range {
-            width: 80px;
-        }
-        .board-toolbar .form-control-color {
-            width: 36px;
-            height: 30px;
-            padding: 2px;
-        }
         .board-toolbar .vr {
             margin: 0 2px;
+        }
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #555;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .color-swatch:hover {
+            transform: scale(1.2);
+            border-color: #fff;
+        }
+        .color-swatch.active {
+            border-color: #fff;
+            box-shadow: 0 0 6px 2px rgba(255,255,255,0.6);
+        }
+        .bg-swatch {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            border: 2px solid #555;
+            cursor: pointer;
+        }
+        .bg-swatch:hover {
+            border-color: #fff;
+        }
+        .bg-swatch.active {
+            border-color: #ffc107;
+            box-shadow: 0 0 4px 1px rgba(255,193,7,0.5);
+        }
+        .board-toolbar .btn-sm-w {
+            font-size: 0.7rem;
+            padding: 1px 6px;
         }
     </style>
 </head>
@@ -51,32 +77,53 @@
 
             <!-- 工具选择 -->
             <div class="btn-group btn-group-sm me-1">
-                <button class="btn btn-outline-light active" id="btnSelect" title="选择/移动 (V)">&#9758; 选择</button>
-                <button class="btn btn-outline-light" id="btnDraw" title="画笔 (P)">&#9998; 画笔</button>
-                <button class="btn btn-outline-light" id="btnText" title="文字 (T)">&#10746; 文字</button>
-                <button class="btn btn-outline-info" id="btnImage" title="插入图片">&#128247; 图片</button>
+                <button class="btn btn-outline-light active" id="btnSelect" title="选择/移动 (V)">选择</button>
+                <button class="btn btn-outline-light" id="btnDraw" title="画笔 (P)">画笔</button>
+                <button class="btn btn-outline-light" id="btnText" title="文字 (T)">文字</button>
+                <button class="btn btn-outline-info" id="btnImage" title="插入图片">图片</button>
             </div>
 
-            <!-- 形状 -->
-            <div class="btn-group btn-group-sm me-1">
-                <button class="btn btn-outline-light" id="btnRect" title="矩形 (R)">&#9644; 矩形</button>
+            <!-- 预设颜色 -->
+            <div class="d-flex align-items-center gap-1 me-1" id="colorSwatches">
+                <span class="color-swatch active" data-color="#000000" style="background:#000000" title="黑色"></span>
+                <span class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF" title="白色"></span>
+                <span class="color-swatch" data-color="#FF0000" style="background:#FF0000" title="红色"></span>
+                <span class="color-swatch" data-color="#0000FF" style="background:#0000FF" title="蓝色"></span>
+                <span class="color-swatch" data-color="#00AA00" style="background:#00AA00" title="绿色"></span>
+                <span class="color-swatch" data-color="#FFFF00" style="background:#FFFF00" title="黄色"></span>
+                <span class="color-swatch" data-color="#FF8800" style="background:#FF8800" title="橙色"></span>
+                <span class="color-swatch" data-color="#8800CC" style="background:#8800CC" title="紫色"></span>
+                <span class="color-swatch" data-color="#888888" style="background:#888888" title="灰色"></span>
+                <span class="color-swatch" data-color="#FF69B4" style="background:#FF69B4" title="粉色"></span>
             </div>
 
             <div class="vr bg-secondary"></div>
 
-            <!-- 颜色与粗细 -->
-            <input type="color" class="form-control form-control-color" id="colorPicker" value="#000000" title="颜色">
-            <span class="text-light small me-1">粗细</span>
-            <input type="range" class="form-range" id="strokeWidth" min="1" max="40" value="4">
-            <span class="text-light small" id="widthVal" style="min-width:1.5em;">4</span>
+            <!-- 预设线宽 -->
+            <div class="btn-group btn-group-sm me-1" id="widthPresets">
+                <button class="btn btn-outline-light btn-sm-w active" data-width="3" title="细">细</button>
+                <button class="btn btn-outline-light btn-sm-w" data-width="8" title="中">中</button>
+                <button class="btn btn-outline-light btn-sm-w" data-width="18" title="粗">粗</button>
+            </div>
+
+            <div class="vr bg-secondary"></div>
+
+            <!-- 背景色 -->
+            <div class="d-flex align-items-center gap-1 me-1" id="bgSwatches">
+                <span class="text-light small me-1">背景</span>
+                <span class="bg-swatch active" data-bg="#FFFFFF" style="background:#FFFFFF" title="白色"></span>
+                <span class="bg-swatch" data-bg="#1a1a1a" style="background:#1a1a1a" title="黑色"></span>
+                <span class="bg-swatch" data-bg="#1B3A1B" style="background:#1B3A1B" title="墨绿"></span>
+                <span class="bg-swatch" data-bg="#0D1B3E" style="background:#0D1B3E" title="墨蓝"></span>
+            </div>
 
             <div class="vr bg-secondary"></div>
 
             <!-- 编辑 -->
             <div class="btn-group btn-group-sm me-1">
-                <button class="btn btn-outline-secondary" id="btnUndo" title="撤销 (Ctrl+Z)">&#8630;</button>
-                <button class="btn btn-outline-secondary" id="btnRedo" title="重做 (Ctrl+Y)">&#8631;</button>
-                <button class="btn btn-outline-danger" id="btnDelete" title="删除选中 (Del)">&#10006;</button>
+                <button class="btn btn-outline-secondary" id="btnUndo" title="撤销 (Ctrl+Z)">撤销</button>
+                <button class="btn btn-outline-secondary" id="btnRedo" title="重做 (Ctrl+Y)">重做</button>
+                <button class="btn btn-outline-danger" id="btnDelete" title="删除选中 (Del)">删除</button>
                 <button class="btn btn-outline-warning" id="btnClear" title="清空画板">清空</button>
             </div>
 
@@ -84,15 +131,14 @@
 
             <!-- 保存/关闭 -->
             <div class="btn-group btn-group-sm ms-auto">
-                <button class="btn btn-success" id="btnExport" title="导出保存">&#128190; 导出</button>
-                <button class="btn btn-outline-danger" id="btnClose" title="关闭">&#10060;</button>
+                <button class="btn btn-success" id="btnExport" title="导出保存">导出</button>
+                <button class="btn btn-outline-danger" id="btnClose" title="关闭">关闭</button>
             </div>
         </div>
     </nav>
 
     <!-- 画布容器 -->
-    <div class="flex-fill d-flex align-items-center justify-content-center overflow-auto p-3 bg-dark" id="canvasWrap"
-        style="--bs-bg-opacity:1;">
+    <div class="flex-fill d-flex align-items-center justify-content-center overflow-auto p-3 bg-white" id="canvasWrap">
         <div id="canvasInner">
             <canvas id="boardCanvas"></canvas>
         </div>
@@ -128,12 +174,11 @@
         });
 
         let currentTool = 'select';
-        let currentMode = null;
-        let isDrawing = false;
-        let drawStart = null;
         let zoomLevel = 1;
         let undoStack = [];
         let redoStack = [];
+        let currentColor = '#000000';
+        let currentWidth = 3;
         const MAX_HISTORY = 50;
 
         // ==================== Zoom ====================
@@ -200,7 +245,7 @@
         }
 
         saveState();
-        fabricCanvas.on('object:modified', function () { if (!isDrawing) saveState(); });
+        fabricCanvas.on('object:modified', function () { saveState(); });
         fabricCanvas.on('path:created', function () { saveState(); });
 
         // ==================== Tool Switching ====================
@@ -210,7 +255,6 @@
             fabricCanvas.isDrawingMode = false;
             fabricCanvas.selection = true;
             fabricCanvas.defaultCursor = 'default';
-            currentMode = null;
 
             switch (tool) {
                 case 'select':
@@ -219,76 +263,30 @@
                 case 'draw':
                     $('#btnDraw').addClass('active');
                     fabricCanvas.isDrawingMode = true;
-                    fabricCanvas.freeDrawingBrush.color = $('#colorPicker').val();
-                    fabricCanvas.freeDrawingBrush.width = parseInt($('#strokeWidth').val());
+                    fabricCanvas.freeDrawingBrush.color = currentColor;
+                    fabricCanvas.freeDrawingBrush.width = currentWidth;
                     fabricCanvas.selection = false;
-                    currentMode = 'draw';
                     break;
                 case 'text':
                     $('#btnText').addClass('active');
-                    currentMode = 'text';
-                    fabricCanvas.defaultCursor = 'crosshair';
-                    break;
-                case 'rect':
-                    $('#btnRect').addClass('active');
-                    currentMode = 'rect';
-                    fabricCanvas.defaultCursor = 'crosshair';
-                    break;
+                    addText(CANVAS_W / 2 - 150, CANVAS_H / 2 - 20);
+                    saveState();
+                    setTool('select');
+                    return;
                 case 'image':
                     $('#btnImage').addClass('active');
                     break;
             }
         }
 
-        // ==================== Mouse handlers ====================
-        fabricCanvas.on('mouse:down', function (opt) {
-            if (currentMode !== 'rect' && currentMode !== 'text') return;
-            if (!opt.pointer) return;
-
-            if (currentMode === 'text') {
-                addText(opt.pointer.x, opt.pointer.y);
-                saveState();
-                setTool('select');
-                return;
-            }
-            if (currentMode === 'rect') {
-                isDrawing = true;
-                drawStart = { x: opt.pointer.x, y: opt.pointer.y };
-            }
-        });
-
-        fabricCanvas.on('mouse:up', function (opt) {
-            if (!isDrawing || !drawStart || !opt.pointer) return;
-            isDrawing = false;
-
-            if (currentMode === 'rect') {
-                var color = $('#colorPicker').val();
-                var sw = parseInt($('#strokeWidth').val());
-                var rect = new fabric.Rect({
-                    left: Math.min(drawStart.x, opt.pointer.x),
-                    top: Math.min(drawStart.y, opt.pointer.y),
-                    width: Math.abs(opt.pointer.x - drawStart.x),
-                    height: Math.abs(opt.pointer.y - drawStart.y),
-                    fill: 'transparent',
-                    stroke: color,
-                    strokeWidth: sw,
-                });
-                fabricCanvas.add(rect);
-                fabricCanvas.setActiveObject(rect);
-                saveState();
-            }
-            drawStart = null;
-        });
-
         // ==================== Text ====================
         function addText(x, y) {
-            var color = $('#colorPicker').val();
             var textbox = new fabric.Textbox('双击输入文字', {
                 left: x,
                 top: y,
                 width: 300,
                 fontSize: 40,
-                fill: color,
+                fill: currentColor,
                 fontFamily: 'sans-serif',
                 editable: true,
             });
@@ -321,7 +319,6 @@
         $('#btnSelect').click(function () { setTool('select'); });
         $('#btnDraw').click(function () { setTool('draw'); });
         $('#btnText').click(function () { setTool('text'); });
-        $('#btnRect').click(function () { setTool('rect'); });
 
         $('#btnImage').click(function () {
             setTool('image');
@@ -360,42 +357,59 @@
             }, function (confirmed) {
                 if (confirmed) {
                     fabricCanvas.clear();
-                    fabricCanvas.backgroundColor = '#ffffff';
+                    fabricCanvas.backgroundColor = '#FFFFFF';
+                    fabricCanvas.renderAll();
                     undoStack = [];
                     redoStack = [];
                     saveState();
+                    // 重置 swatch 高亮
+                    $('#bgSwatches .bg-swatch').removeClass('active');
+                    $('#bgSwatches .bg-swatch[data-bg="#FFFFFF"]').addClass('active');
                 }
             });
         });
 
-        // ==================== Color & Stroke ====================
-        $('#colorPicker').change(function () {
-            var color = $(this).val();
+        // ==================== Color ====================
+        $('#colorSwatches').on('click', '.color-swatch', function () {
+            currentColor = $(this).data('color');
+            $('#colorSwatches .color-swatch').removeClass('active');
+            $(this).addClass('active');
             if (fabricCanvas.isDrawingMode) {
-                fabricCanvas.freeDrawingBrush.color = color;
+                fabricCanvas.freeDrawingBrush.color = currentColor;
             }
             var active = fabricCanvas.getActiveObject();
             if (active) {
                 if (active.type === 'textbox' || active.type === 'i-text') {
-                    active.set('fill', color);
+                    active.set('fill', currentColor);
                 } else if (active.stroke !== undefined) {
-                    active.set('stroke', color);
+                    active.set('stroke', currentColor);
                 }
                 fabricCanvas.renderAll();
             }
         });
 
-        $('#strokeWidth').on('input', function () {
-            var w = parseInt($(this).val());
-            $('#widthVal').text(w);
+        // ==================== Stroke Width ====================
+        $('#widthPresets').on('click', '.btn', function () {
+            currentWidth = parseInt($(this).data('width'));
+            $('#widthPresets .btn').removeClass('active');
+            $(this).addClass('active');
             if (fabricCanvas.isDrawingMode) {
-                fabricCanvas.freeDrawingBrush.width = w;
+                fabricCanvas.freeDrawingBrush.width = currentWidth;
             }
             var active = fabricCanvas.getActiveObject();
             if (active && active.strokeWidth !== undefined) {
-                active.set('strokeWidth', w);
+                active.set('strokeWidth', currentWidth);
                 fabricCanvas.renderAll();
             }
+        });
+
+        // ==================== Background ====================
+        $('#bgSwatches').on('click', '.bg-swatch', function () {
+            var bg = $(this).data('bg');
+            fabricCanvas.backgroundColor = bg;
+            fabricCanvas.renderAll();
+            $('#bgSwatches .bg-swatch').removeClass('active');
+            $(this).addClass('active');
         });
 
         // ==================== Keyboard ====================
@@ -407,7 +421,6 @@
                 case 'v': if (!e.ctrlKey) setTool('select'); break;
                 case 'p': if (!e.ctrlKey) setTool('draw'); break;
                 case 't': if (!e.ctrlKey) setTool('text'); break;
-                case 'r': if (!e.ctrlKey) setTool('rect'); break;
                 case 'delete':
                 case 'backspace':
                     var a = fabricCanvas.getActiveObject();
@@ -442,15 +455,37 @@
             var active = fabricCanvas.getActiveObject();
             if (active) {
                 if (active.fill && active.type !== 'rect') {
-                    $('#colorPicker').val(active.fill);
+                    selectColorSwatch(active.fill);
                 } else if (active.stroke) {
-                    $('#colorPicker').val(active.stroke);
+                    selectColorSwatch(active.stroke);
                 }
                 if (active.strokeWidth !== undefined) {
-                    $('#strokeWidth').val(active.strokeWidth);
-                    $('#widthVal').text(active.strokeWidth);
+                    selectWidthPreset(active.strokeWidth);
                 }
             }
+        }
+
+        function selectColorSwatch(color) {
+            currentColor = color;
+            $('#colorSwatches .color-swatch').removeClass('active');
+            $('#colorSwatches .color-swatch').each(function () {
+                if ($(this).data('color').toUpperCase() === color.toUpperCase()) {
+                    $(this).addClass('active');
+                }
+            });
+        }
+
+        function selectWidthPreset(w) {
+            currentWidth = w;
+            $('#widthPresets .btn').removeClass('active');
+            // 选择最接近的预设
+            var best = null, bestDiff = Infinity;
+            $('#widthPresets .btn').each(function () {
+                var v = parseInt($(this).data('width'));
+                var d = Math.abs(v - w);
+                if (d < bestDiff) { bestDiff = d; best = $(this); }
+            });
+            if (best) best.addClass('active');
         }
 
         // ==================== Export ====================
@@ -498,7 +533,7 @@
                 console.error(err);
                 swal('导出失败', err.message, 'error');
             } finally {
-                $btn.prop('disabled', false).html('&#128190; 导出');
+                $btn.prop('disabled', false).text('导出');
             }
         });
 
