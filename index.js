@@ -4118,7 +4118,8 @@ async function showSharedContent(content) {
     if (content.pictureNote && content.pictureNote.length > 0) {
         let picHtml = '<div class="row g-2">';
         content.pictureNote.forEach(url => {
-            picHtml += `<div class="col-6 col-md-4"><img src="${url}" class="img-fluid rounded border" style="cursor:pointer;" onclick="window.open('${url}')" loading="lazy"></div>`;
+            const proxyUrl = window.proxyUrl ? window.proxyUrl(url) : url;
+            picHtml += `<div class="col-6 col-md-4"><img src="${proxyUrl}" class="img-fluid rounded border" style="cursor:pointer;" onclick="window.open('${proxyUrl}')" loading="lazy"></div>`;
         });
         picHtml += '</div>';
         $("#mistakePicBody").html(picHtml);
@@ -4143,10 +4144,12 @@ async function showSharedContent(content) {
             if (snapShot) {
                 const userName = m.userName || '';
                 const sendTime = m.sendTime || '';
+                // 使用代理URL
+                const proxyUrl = window.proxyUrl ? window.proxyUrl(snapShot) : snapShot;
                 imgsHtml += `
                     <div class="mb-3">
                         <div class="card">
-                            <img src="${snapShot}" class="card-img-top" alt="问题快照" style="cursor:pointer;" onclick="window.open('${snapShot}')">
+                            <img src="${proxyUrl}" class="card-img-top" alt="问题快照" style="cursor:pointer;" onclick="window.open('${proxyUrl}')">
                             <div class="card-footer small text-muted">
                                 ${userName ? '提问者: ' + userName + ' ' : ''}${sendTime}
                             </div>
