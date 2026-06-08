@@ -79,7 +79,10 @@ def upload_file(local_path: str, token: str, userId: str,
         result["accessKeySecret"],
         result["securityToken"],
     )
-    bucket = oss2.Bucket(auth, result.get("endpoint", "oss-cn-hangzhou.aliyuncs.com"), result["bucket"])
+    region = result.get("region") or "oss-cn-hangzhou"
+    # 与 JS 一致：通过 region 连接 OSS
+    bucket_endpoint = f"https://{region}.aliyuncs.com"
+    bucket = oss2.Bucket(auth, bucket_endpoint, result["bucket"])
 
     date_str = time.strftime("%Y%m%d")
     remote_path = f"{fc}/{fr}/{userId}/{date_str}/{nonce}/{file_name}"
@@ -88,11 +91,8 @@ def upload_file(local_path: str, token: str, userId: str,
     bucket.put_object_from_file(remote_path, local_path)
     print("上传完成!")
 
-    # 构造公开 URL
-    endpoint = result.get("endpoint") or f"https://{result['bucket']}.oss-cn-hangzhou.aliyuncs.com"
-    if not endpoint.startswith("http"):
-        endpoint = f"https://{endpoint}"
-    url = f"{endpoint.rstrip('/')}/{remote_path}"
+    # 构造公开 URL，优先用 bucket 名拼默认地址
+    url = f"https://{result['bucket']}.{region}.aliyuncs.com/{remote_path}"
     return url
 
 

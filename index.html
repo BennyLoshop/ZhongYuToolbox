@@ -66,7 +66,7 @@ var _hmt = _hmt || [];
 
             position: fixed;
             /* 固定在屏幕上 */
-            top: 50vh;yhu 
+            top: 50vh;
             /* 顶部 50% */
             left: 50%;
             /* 左侧 50% */
@@ -496,21 +496,6 @@ var _hmt = _hmt || [];
                     </tbody>
                 </table>
             </div>
-            <!-- Screenshot 预览 Modal -->
-            <!-- Screenshot 预览 Modal -->
-            <div class="modal fade" id="screenshotModal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-lg">
-                    <div class="modal-content border border-primary rounded-3">
-                        <div class="modal-header">
-                            <h5 class="modal-title">笔记预览</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
-                        </div>
-                        <div class="modal-body p-0 bg-light">
-                            <img id="screenshotImg" src="" alt="screenshot" class="img-fluid border-top border-primary">
-                        </div>
-                    </div>
-                </div>
-            </div>
 
 
         </div>
@@ -610,13 +595,13 @@ var _hmt = _hmt || [];
                     </div>
                     <div class="modal-body p-0 d-flex flex-column" style="height:calc(100vh - 56px); background:#f8f9fa;">
                         <!-- 画板工具栏 -->
-                        <nav class="navbar navbar-dark bg-dark border-bottom border-secondary py-1 px-2 flex-shrink-0" style="--bs-bg-opacity:1;">
+                        <nav class="navbar navbar-light bg-white border-bottom border-secondary py-1 px-2 flex-shrink-0">
                             <div class="d-flex align-items-center gap-1 flex-wrap w-100">
                                 <div class="btn-group btn-group-sm me-1">
-                                    <button class="btn btn-outline-light active" id="btnSelect" title="选择/移动 (V)">选择</button>
-                                    <button class="btn btn-outline-light" id="btnDraw" title="画笔 (P)">画笔</button>
-                                    <button class="btn btn-outline-light" id="btnText" title="文字 (T)">文字</button>
-                                    <button class="btn btn-outline-info" id="btnImage" title="插入图片">图片</button>
+                                    <button class="btn btn-outline-dark active" id="btnSelect" title="选择/移动 (V)">选择</button>
+                                    <button class="btn btn-outline-dark" id="btnDraw" title="画笔 (P)">画笔</button>
+                                    <button class="btn btn-outline-dark" id="btnText" title="文字 (T)">文字</button>
+                                    <button class="btn btn-outline-dark" id="btnImage" title="插入图片">图片</button>
                                 </div>
                                 <div class="vr bg-secondary"></div>
                                 <div class="d-flex align-items-center gap-1 me-1" id="colorSwatches">
@@ -633,13 +618,13 @@ var _hmt = _hmt || [];
                                 </div>
                                 <div class="vr bg-secondary"></div>
                                 <div class="btn-group btn-group-sm me-1" id="widthPresets">
-                                    <button class="btn btn-outline-light btn-sm-w active" data-width="3" title="细">细</button>
-                                    <button class="btn btn-outline-light btn-sm-w" data-width="8" title="中">中</button>
-                                    <button class="btn btn-outline-light btn-sm-w" data-width="18" title="粗">粗</button>
+                                    <button class="btn btn-outline-dark btn-sm-w active" data-width="3" title="细">细</button>
+                                    <button class="btn btn-outline-dark btn-sm-w" data-width="8" title="中">中</button>
+                                    <button class="btn btn-outline-dark btn-sm-w" data-width="18" title="粗">粗</button>
                                 </div>
                                 <div class="vr bg-secondary"></div>
                                 <div class="d-flex align-items-center gap-1 me-1" id="bgSwatches">
-                                    <span class="text-light small me-1">背景</span>
+                                    <span class="text-dark small me-1">背景</span>
                                     <span class="bg-swatch active" data-bg="#FFFFFF" style="background:#FFFFFF" title="白色"></span>
                                     <span class="bg-swatch" data-bg="#1a1a1a" style="background:#1a1a1a" title="黑色"></span>
                                     <span class="bg-swatch" data-bg="#1B3A1B" style="background:#1B3A1B" title="墨绿"></span>
@@ -647,15 +632,18 @@ var _hmt = _hmt || [];
                                 </div>
                                 <div class="vr bg-secondary"></div>
                                 <div class="btn-group btn-group-sm me-1">
-                                    <button class="btn btn-outline-secondary" id="btnUndo" title="撤销 (Ctrl+Z)">撤销</button>
-                                    <button class="btn btn-outline-secondary" id="btnRedo" title="重做 (Ctrl+Y)">重做</button>
-                                    <button class="btn btn-outline-danger" id="btnDelete" title="删除选中 (Del)">删除</button>
-                                    <button class="btn btn-outline-warning" id="btnClear" title="清空画板">清空</button>
+                                    <button class="btn btn-outline-dark" id="btnUndo" title="撤销 (Ctrl+Z)">撤销</button>
+                                    <button class="btn btn-outline-dark" id="btnRedo" title="重做 (Ctrl+Y)">重做</button>
+                                    <button class="btn btn-outline-dark" id="btnDelete" title="删除选中 (Del)">删除</button>
+                                    <button class="btn btn-outline-dark" id="btnClear" title="清空画板">清空</button>
+                                    <button class="btn btn-outline-dark d-none" id="btnCrop" title="裁剪选中图片">裁剪</button>
+                                    <button class="btn btn-outline-dark d-none" id="btnCropConfirm" title="确认裁剪">✓确认</button>
+                                    <button class="btn btn-outline-dark d-none" id="btnCropCancel" title="取消裁剪">✗取消</button>
                                 </div>
                                 <div class="vr bg-secondary"></div>
                                 <div class="d-flex align-items-center gap-1 ms-auto">
-                                    <span class="text-light small">SessionID</span>
-                                    <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary" id="boardSessionId" style="width:100px;" placeholder="1061955" readonly>
+                                    <span class="text-dark small">SessionID</span>
+                                    <input type="text" class="form-control form-control-sm bg-white text-dark border-secondary" id="boardSessionId" style="width:100px;" placeholder="1061955" readonly>
                                     <button class="btn btn-success btn-sm" id="btnExport" title="发送到随身答">发送</button>
                                 </div>
                             </div>
@@ -913,7 +901,10 @@ var _hmt = _hmt || [];
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title" id="examModalLabel"></h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <div class="d-flex align-items-center">
+                                <span id="examShareBtn" style="cursor:pointer;font-size:1.2rem;opacity:0.6;margin-right:8px;display:none;" title="分享" onclick="(function(){var s=window._currentShare;if(s)openShareModal(s.type,s.id,s.title);})()">📤</span>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
                         </div>
                         <div class="modal-body" id="examModalBody">
                             <div class="text-center py-3 text-muted">
@@ -944,8 +935,8 @@ var _hmt = _hmt || [];
                         <div class="mb-3">
                             <label>上传路径:</label>
                             <div class="input-group">
-                                <!-- URL前缀起始部分 -->
-                                <span class="input-group-text">https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/</span>
+                                <!-- URL前缀起始部分（通过 API 获取） -->
+                                <span class="input-group-text" id="ossPrefix">加载中...</span>
 
                                 <!-- 上传类型选择替代原来 note_v2 -->
                                 <select id="selectFc" class="form-select" style="max-width: 150px;">
@@ -1004,7 +995,10 @@ var _hmt = _hmt || [];
                 <div class="list-group mt-3" style="background:rgba(255,255,255,0.8)">
                     <div class="container mb-3">
                         <br />
-                        <h1 class="text-primary">我的图库</h1>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h1 class="text-primary mb-0">我的图库</h1>
+                            <button class="btn btn-primary btn-sm" id="btnUploadPicture" onclick="uploadPictureBtn()">上传图片</button>
+                        </div>
 
                         <!-- nav tabs -->
                         <ul class="nav nav-tabs" id="pictureTabs" role="tablist">
@@ -1128,6 +1122,7 @@ var _hmt = _hmt || [];
                     <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#courseModal">
                         更换课程
                     </button>
+                    <button class="btn btn-outline-success" id="courseShareBtn" type="button" style="display:none;" title="分享此课程" onclick="(function(){var s=window._currentShare;if(s)openShareModal(s.type,s.id,s.title,s.chapterId);})()">📤 分享</button>
                 </div>
                 <div class="input-group mb-3">
                     <div id="cid_card" class="card"
@@ -1202,6 +1197,97 @@ var _hmt = _hmt || [];
         </div>
 
     </div>
+
+    <!-- 错题本详情 Modal -->
+    <div class="modal fade" id="screenshotModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-xl">
+            <div class="modal-content border border-primary rounded-3">
+                <div class="modal-header">
+                    <h5 class="modal-title">错题详情</h5>
+                    <div class="d-flex align-items-center">
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                    </div>
+                </div>
+                <div class="modal-body bg-light p-3">
+                    <!-- 题目 -->
+                    <div class="card mb-3" id="mistakeQstCard" style="display:none;">
+                        <div class="card-header fw-bold text-primary">题目</div>
+                        <div class="card-body" id="mistakeQstBody"></div>
+                    </div>
+                    <!-- 答案 -->
+                    <div class="card mb-3" id="mistakeAnsCard" style="display:none;">
+                        <div class="card-header fw-bold text-success">答案</div>
+                        <div class="card-body" id="mistakeAnsBody"></div>
+                    </div>
+                    <!-- 解析 -->
+                    <div class="card mb-3" id="mistakeExpCard" style="display:none;">
+                        <div class="card-header fw-bold text-info">解析</div>
+                        <div class="card-body" id="mistakeExpBody"></div>
+                    </div>
+                    <!-- 笔记 -->
+                    <div class="card mb-3" id="mistakeNoteCard" style="display:none;">
+                        <div class="card-header fw-bold text-primary">笔记</div>
+                        <div class="card-body p-2">
+                            <img id="screenshotImg" src="" alt="screenshot" class="img-fluid w-100 rounded">
+                        </div>
+                    </div>
+                    <!-- 图片笔记 -->
+                    <div class="card mb-3" id="mistakePicCard" style="display:none;">
+                        <div class="card-header fw-bold text-primary">图片笔记</div>
+                        <div class="card-body" id="mistakePicBody"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分享创建 Modal -->
+    <div class="modal fade" id="shareCreateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content rounded-3">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">📤 创建分享</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">资源类型</label>
+                        <input type="text" id="shareResType" class="form-control" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">标题</label>
+                        <input type="text" id="shareTitle" class="form-control" placeholder="给分享起个名字">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">访问密码 <small class="text-muted">(可选)</small></label>
+                        <input type="text" id="sharePwd" class="form-control" placeholder="留空则无需密码">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">过期时间 <small class="text-muted">(小时, 0=永久)</small></label>
+                            <input type="number" id="shareExpiry" class="form-control" value="0" min="0">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">最大查看次数 <small class="text-muted">(0=不限)</small></label>
+                            <input type="number" id="shareMaxViews" class="form-control" value="0" min="0">
+                        </div>
+                    </div>
+                    <div id="shareResultBox" style="display:none;" class="alert alert-success mb-0">
+                        <strong>分享链接已生成！</strong>
+                        <div class="input-group mt-2">
+                            <input type="text" id="shareLinkInput" class="form-control" readonly>
+                            <button class="btn btn-outline-success" onclick="copyShareLink()">复制</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button class="btn btn-primary" id="shareCreateBtn" onclick="createShare()">生成分享链接</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="DPlayer.min.js"></script>
     <script src="index.js"></script>
 
@@ -1303,6 +1389,32 @@ var _hmt = _hmt || [];
                 max-height: none;
             }
         }
+        /* 分享查看：JSON 预览样式 */
+        .json-view {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            max-height: 500px;
+            overflow: auto;
+            font-size: .85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        /* 分享课程/章节内容容器 */
+        #shareCourseContent {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        #shareCourseContent img {
+            max-width: 100% !important;
+            height: auto;
+        }
+        #shareCourseContent table {
+            max-width: 100%;
+            display: block;
+            overflow-x: auto;
+        }
+
         /* 高级筛选 details 展开时箭头旋转 */
         details.adv-filter[open] summary svg {
             transform: rotate(180deg);
@@ -1379,6 +1491,17 @@ var _hmt = _hmt || [];
         #boardModal .navbar .btn {
             font-size: 0.8rem;
         }
+        /* 选中状态：蓝色填充 */
+        #boardModal .navbar .btn-outline-dark.active {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
+        }
+        #boardModal .navbar .btn-outline-dark.active:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+            color: #fff;
+        }
         #boardModal .navbar .vr {
             margin: 0 2px;
         }
@@ -1389,16 +1512,16 @@ var _hmt = _hmt || [];
             cursor: pointer;
             transition: transform 0.1s;
         }
-        .color-swatch:hover { transform: scale(1.2); border-color: #fff; }
-        .color-swatch.active { border-color: #fff; box-shadow: 0 0 6px 2px rgba(255,255,255,0.6); }
+        .color-swatch:hover { transform: scale(1.2); border-color: #333; }
+        .color-swatch.active { border-color: #0d6efd; box-shadow: 0 0 6px 2px rgba(13,110,253,0.5); }
         .bg-swatch {
             width: 20px; height: 20px;
             border-radius: 3px;
             border: 2px solid #555;
             cursor: pointer;
         }
-        .bg-swatch:hover { border-color: #fff; }
-        .bg-swatch.active { border-color: #ffc107; box-shadow: 0 0 4px 1px rgba(255,193,7,0.5); }
+        .bg-swatch:hover { border-color: #333; }
+        .bg-swatch.active { border-color: #0d6efd; box-shadow: 0 0 4px 1px rgba(13,110,253,0.5); }
         #boardModal .btn-sm-w { font-size: 0.7rem; padding: 1px 6px; }
     </style>
     <!-- 返回顶部按钮 -->
@@ -1509,8 +1632,9 @@ var _hmt = _hmt || [];
         }
         function addText(x, y) {
             var tb = new fabric.Textbox('双击输入文字', {
-                left: x, top: y, width: 300, fontSize: 40,
-                fill: currentColor, fontFamily: 'sans-serif', editable: true
+                left: x, top: y, width: 360, fontSize: 40,
+                fill: currentColor, fontFamily: 'sans-serif', editable: true,
+                splitByGrapheme: true
             });
             fabricCanvas.add(tb);
             fabricCanvas.setActiveObject(tb);
@@ -1567,15 +1691,121 @@ var _hmt = _hmt || [];
             });
         });
 
+        // ==================== 图片裁剪 ====================
+        var cropImg = null, cropRect = null, isCropping = false;
+
+        function updateCropBtnVisibility() {
+            var obj = fabricCanvas.getActiveObject();
+            if (isCropping) return;
+            if (obj && obj.type === 'image') {
+                $('#btnCrop').removeClass('d-none');
+            } else {
+                $('#btnCrop').addClass('d-none');
+            }
+        }
+
+        $('#btnCrop').click(function () {
+            var img = fabricCanvas.getActiveObject();
+            if (!img || img.type !== 'image' || isCropping) return;
+            isCropping = true;
+            cropImg = img;
+            fabricCanvas.discardActiveObject();
+
+            // 创建裁剪矩形
+            cropRect = new fabric.Rect({
+                left: img.left,
+                top: img.top,
+                width: img.width * img.scaleX,
+                height: img.height * img.scaleY,
+                fill: 'rgba(0,120,255,0.15)',
+                stroke: '#0078ff',
+                strokeWidth: 2,
+                strokeDashArray: [8, 4],
+                cornerColor: '#0078ff',
+                cornerSize: 10,
+                transparentCorners: false,
+                hasControls: true,
+                hasBorders: true,
+                selectable: true,
+                evented: true,
+                lockRotation: true,
+                lockUniScaling: false
+            });
+            fabricCanvas.add(cropRect);
+            fabricCanvas.setActiveObject(cropRect);
+            fabricCanvas.renderAll();
+
+            // 显示确认/取消按钮
+            $('#btnCrop').addClass('d-none');
+            $('#btnCropConfirm').removeClass('d-none');
+            $('#btnCropCancel').removeClass('d-none');
+            // 裁剪时禁用其他工具按钮
+            $('#boardModal .navbar .btn').not('#btnCropConfirm,#btnCropCancel').prop('disabled', true);
+        });
+
+        $('#btnCropConfirm').click(function () {
+            if (!isCropping || !cropImg || !cropRect) return;
+            try {
+                var img = cropImg;
+                var rect = cropRect;
+
+                // 计算在原图坐标中的裁剪区域
+                var sX = img.scaleX, sY = img.scaleY;
+                var imgW = img.width, imgH = img.height;
+                var cLeft = Math.max(0, (rect.left - img.left) / sX);
+                var cTop = Math.max(0, (rect.top - img.top) / sY);
+                var cW = Math.min(rect.width / sX, imgW - cLeft);
+                var cH = Math.min(rect.height / sY, imgH - cTop);
+                if (cW <= 0 || cH <= 0) { swal('无效裁剪区域', '', 'warning'); return; }
+
+                var offC = document.createElement('canvas');
+                offC.width = cW; offC.height = cH;
+                offC.getContext('2d').drawImage(img._element, cLeft, cTop, cW, cH, 0, 0, cW, cH);
+                var dataUrl = offC.toDataURL();
+
+                var self = this;
+                fabric.Image.fromURL(dataUrl, function (newImg) {
+                    newImg.set({ left: rect.left, top: rect.top, scaleX: sX, scaleY: sY });
+                    fabricCanvas.remove(img);
+                    fabricCanvas.remove(rect);
+                    fabricCanvas.add(newImg);
+                    fabricCanvas.setActiveObject(newImg);
+                    saveState();
+                    exitCropMode();
+                });
+            } catch (e) { console.error('裁剪失败:', e); exitCropMode(); }
+        });
+
+        $('#btnCropCancel').click(exitCropMode);
+
+        function exitCropMode() {
+            if (!isCropping) return;
+            isCropping = false;
+            if (cropRect && fabricCanvas.getObjects().includes(cropRect)) {
+                fabricCanvas.remove(cropRect);
+            }
+            cropImg = null; cropRect = null;
+            $('#btnCrop').addClass('d-none');
+            $('#btnCropConfirm').addClass('d-none');
+            $('#btnCropCancel').addClass('d-none');
+            $('#boardModal .navbar .btn').prop('disabled', false);
+            updateCropBtnVisibility();
+            fabricCanvas.renderAll();
+        }
+
         // ---- Color / Width / BG ----
-        $('#colorSwatches').on('click', '.color-swatch', function () {
+        // 用 mousedown 而不是 click，避免点击色板时 fabric 先取消选中文本框
+        $('#colorSwatches').on('mousedown', '.color-swatch', function (e) {
+            e.preventDefault(); // 防止色板抢走焦点
             currentColor = $(this).data('color');
             $('#colorSwatches .color-swatch').removeClass('active');
             $(this).addClass('active');
             if (fabricCanvas.isDrawingMode) fabricCanvas.freeDrawingBrush.color = currentColor;
             var a = fabricCanvas.getActiveObject();
             if (a) {
-                if (a.type === 'textbox' || a.type === 'i-text') a.set('fill', currentColor);
+                if (a.type === 'textbox' || a.type === 'i-text') {
+                    a.set({ fill: currentColor, styles: {} }); // 清除逐字符样式确保全局换色生效
+                }
                 else if (a.stroke !== undefined) a.set('stroke', currentColor);
                 fabricCanvas.renderAll();
             }
@@ -1602,6 +1832,7 @@ var _hmt = _hmt || [];
         fabricCanvas.on('selection:cleared', refreshToolState);
 
         function refreshToolState() {
+            updateCropBtnVisibility();
             var a = fabricCanvas.getActiveObject();
             if (!a) return;
             if (a.fill && a.type !== 'rect') selectColorSwatch(a.fill);
@@ -1668,9 +1899,12 @@ var _hmt = _hmt || [];
             $btn.prop('disabled', true).text('发送中...');
 
             try {
-                // 1. Generate canvas images
+                // 1. Generate canvas images（先复位 zoom=1 导出，避免缩放导致元素挤在角落）
+                var prevZoom = zoomLevel;
+                zoomLevel = 1; applyZoom();
                 var jpgUrl = fabricCanvas.toDataURL({ format: 'jpeg', quality: 0.92, multiplier: 1, width: CANVAS_W, height: CANVAS_H });
                 var pngUrl = fabricCanvas.toDataURL({ format: 'png', multiplier: 1, width: CANVAS_W, height: CANVAS_H });
+                zoomLevel = prevZoom; applyZoom();
 
                 var jpgResp = await fetch(jpgUrl); var jpgBlob = await jpgResp.blob();
                 var pngResp = await fetch(pngUrl); var pngBlob = await pngResp.blob();

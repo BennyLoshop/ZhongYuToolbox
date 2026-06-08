@@ -2,8 +2,10 @@
     window.API_BASE_URL = localStorage.getItem("apiBaseUrl") || "https://zyapi.loshop.com.cn";
     window.API_BASE_BASE_URL = localStorage.getItem("apiBaseOrigin") || "https://zyapi.loshop.com.cn";
     window.proxyBaseUrl = localStorage.getItem("apiBaseUrl") ? localStorage.getItem("apiBaseUrl").replace("//", "//picAgent.") : "https://zyapi.loshop.com.cn/picAgent/";
+    window.SHARE_SERVER = localStorage.getItem("shareServer") || "https://zytbshareapi.loshop.com.cn";
     window.proxyUrl = (url) => {
-        return window.proxyBaseUrl + url;
+        const base = window.proxyBaseUrl;
+        return base.endsWith('/') ? base + url : base + '/' + url;
     };
     window.proxyImgSrc = (url) => {
         if (url && typeof url === 'string' && url.startsWith('http://sxz.alicdn.zykj.org/')) {
@@ -134,6 +136,22 @@
         $("#loginc").show();
         $("#logoutc").hide();
     }
+
+    // ==================== 分享功能：通过 #share=xxx 参数查看分享内容 ====================
+    (function checkShareHash() {
+        const m = location.hash.match(/^#share=([a-f0-9]+)/);
+        if (!m) return;
+        const shareId = m[1];
+        // 确保 DOM 就绪后加载
+        function doLoad() {
+            loadSharedContent(shareId);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', doLoad);
+        } else {
+            doLoad();
+        }
+    })();
 
     // 监听页面滚动，控制按钮显示
     window.addEventListener('DOMContentLoaded', () => {
@@ -734,6 +752,86 @@ async function loadPictures() {
 }
 
 
+// ==================== 图库上传图片 ====================
+async function uploadPictureBtn() {
+    // 用隐藏的 file input 选择文件
+    let input = document.getElementById('pictureFileInput');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'pictureFileInput';
+        input.accept = 'image/*';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        input.addEventListener('change', function () {
+            if (input.files[0]) doUploadPicture(input.files[0]);
+        });
+    }
+    input.click();
+}
+
+async function doUploadPicture(file) {
+    const token = localStorage.getItem("token");
+    if (!token) return swal("请先登录", "", "warning");
+
+    let userId = window.currentUserId;
+    if (!userId) {
+        try { userId = await getUserId(); window.currentUserId = userId; } catch (e) { return swal("无法获取用户ID", "", "warning"); }
+    }
+
+    const btn = document.getElementById('btnUploadPicture');
+    btn.disabled = true;
+    btn.textContent = '上传中...';
+
+    try {
+        // 用已验证的 note_v2 fc 上传（imagestore_v2 的 fc 映射未知）
+        const url = await uploadFile(file, userId, 'note_v2', '', file.name);
+
+        const sizeStr = formatFileSize(file.size);
+        // 从 URL 提取 nonce：路径最后一段的前半部分 (nonce/文件名 中的 nonce)
+        const parts = url.split('/');
+        const nonce = parts[parts.length - 2] || generateNonce();
+
+        // 记录到图库（与抓包对齐：PictureLibrary/AddPictureAsync）
+        const recordResp = await fetch(`${window.API_BASE_URL}/api/services/app/PictureLibrary/AddPictureAsync`, {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "AppName": "com.zykj.manage",
+                "AppVersion": "32"
+            },
+            body: JSON.stringify({
+                picture: url,
+                name: nonce,
+                size: sizeStr
+            })
+        });
+
+        const recordData = await recordResp.json();
+        if (!recordData.success) throw new Error(recordData.error?.message || "记录失败");
+
+        swal("上传成功", "", "success");
+        setTimeout(() => loadPictures(), 500);
+    } catch (e) {
+        console.error(e);
+        swal("上传失败", e.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '上传图片';
+        const input = document.getElementById('pictureFileInput');
+        if (input) input.value = '';
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + 'B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + 'KB';
+    return (bytes / 1024 / 1024).toFixed(2) + 'MB';
+}
+
+
 
 function showGg(str) {
     const key = 'noticeDismissedAt';
@@ -972,6 +1070,9 @@ async function previewQuestion(sessionId) {
                 </div>
             </div>
             <div class="col-md-8 col-lg-9 d-flex flex-column align-items-center justify-content-center p-4">
+                <div class="w-100 text-end mb-1">
+                    <span style="cursor:pointer;font-size:1.2rem;opacity:0.5;" title="分享" onclick="openShareModal('quora','${sessionId}','随身答对话')">📤</span>
+                </div>
                 ${rightHtml}
             </div>
         </div>`);
@@ -1047,6 +1148,18 @@ async function mistake_query() {
         tb.data("id", data[i].id);
         tb.click(async function () {
             try {
+                // 显示 loading
+                $("#screenshotImg").attr("src", "");
+                $("#mistakeQstCard").hide(); $("#mistakeQstBody").html("");
+                $("#mistakeAnsCard").hide(); $("#mistakeAnsBody").html("");
+                $("#mistakeExpCard").hide(); $("#mistakeExpBody").html("");
+                $("#mistakeNoteCard").hide();
+                $("#mistakePicCard").hide(); $("#mistakePicBody").html("");
+                const modalBody = document.querySelector("#screenshotModal .modal-body");
+                const origHtml = modalBody.innerHTML;
+                modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">加载中...</div></div>';
+                $("#screenshotModal").modal("show");
+
                 // 获取题目详情
                 let res = await fetch(`${window.API_BASE_URL}/api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync?itemId=` + $(this).data("id"), {
                     method: "GET",
@@ -1057,47 +1170,86 @@ async function mistake_query() {
                 });
                 let detail = await res.json();
                 detail = detail.result;
-                if (!detail) return;
+                if (!detail) { modalBody.innerHTML = origHtml; swal("无数据"); return; }
 
-                let noteSrc = detail.note;
-                if (!noteSrc) {
-                    swal("无笔记");
-                    return;
+                modalBody.innerHTML = origHtml;
+
+                // 1. 题目 & 答案 & 解析
+                if (detail.qstPath) {
+                    try {
+                        const qstHtml = await (await fetch(`${window.API_BASE_URL}${detail.qstPath}?showAnalysis=true`)).text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(qstHtml, "text/html");
+                        // 题干
+                        const stem = doc.querySelector('.stem')?.innerHTML || '';
+                        if (stem) {
+                            $("#mistakeQstBody").html(stem);
+                            $("#mistakeQstCard").show();
+                        }
+                        // 答案
+                        const answerEl = doc.querySelector('.answers');
+                        if (answerEl) {
+                            answerEl.querySelectorAll('h3').forEach(h => h.remove());
+                            const answerHTML = answerEl.innerHTML.trim();
+                            if (answerHTML) {
+                                $("#mistakeAnsBody").html(answerHTML);
+                                $("#mistakeAnsCard").show();
+                            }
+                        }
+                        // 解析 & 知识点
+                        const analysisEls = doc.querySelectorAll('.analysis');
+                        if (analysisEls.length > 0) {
+                            let expParts = [];
+                            analysisEls.forEach(el => {
+                                const clone = el.cloneNode(true);
+                                clone.querySelectorAll('h3').forEach(h => h.remove());
+                                const html = clone.innerHTML.trim();
+                                if (html) expParts.push(html);
+                            });
+                            if (expParts.length > 0) {
+                                $("#mistakeExpBody").html(expParts.join('<hr>'));
+                                $("#mistakeExpCard").show();
+                            }
+                        }
+                    } catch (e) { console.warn("获取题目失败:", e); }
                 }
 
-                // 🔸 使用 proxyBaseUrl 通过 fetch 下载 zip 文件
-                const zipUrl = proxyUrl(noteSrc);
-                const zipResponse = await fetch(zipUrl);
-                if (!zipResponse.ok) {
-                    swal("下载失败");
-                    return;
+                // 2. 笔记（fileList.json → screenshot.png）
+                if (detail.note) {
+                    try {
+                        const fileListUrl = proxyUrl(detail.note);
+                        const flResp = await fetch(fileListUrl);
+                        if (flResp.ok) {
+                            const fileList = await flResp.json();
+                            const pngEntry = fileList.find(f => f.url && f.url.toLowerCase().endsWith("screenshot.png"));
+                            if (pngEntry) {
+                                const pngUrl = proxyUrl(pngEntry.url);
+                                const pngResp = await fetch(pngUrl);
+                                if (pngResp.ok) {
+                                    const pngBlob = await pngResp.blob();
+                                    $("#screenshotImg").attr("src", URL.createObjectURL(pngBlob));
+                                    $("#mistakeNoteCard").show();
+                                }
+                            }
+                        }
+                    } catch (e) { console.warn("获取笔记失败:", e); }
                 }
 
-                const zipBlob = await zipResponse.blob();
-
-                // 🔸 用 JSZip 解压
-                const zip = await JSZip.loadAsync(zipBlob);
-
-                // 🔸 找到 screenshot.png（不确定具体路径，所以遍历）
-                let screenshotFile = null;
-                zip.forEach((relativePath, zipEntry) => {
-                    if (relativePath.toLowerCase().endsWith("screenshot.png")) {
-                        screenshotFile = zipEntry;
-                    }
-                });
-
-                if (!screenshotFile) {
-                    swal("未找到 screenshot.png");
-                    return;
+                // 3. 图片笔记
+                if (detail.pictureNote && detail.pictureNote.length > 0) {
+                    let picHtml = '<div class="row g-2">';
+                    detail.pictureNote.forEach(url => {
+                        picHtml += `<div class="col-6 col-md-4"><img src="${proxyUrl(url)}" class="img-fluid rounded border" style="cursor:pointer;" onclick="window.open('${proxyUrl(url)}')" loading="lazy"></div>`;
+                    });
+                    picHtml += '</div>';
+                    $("#mistakePicBody").html(picHtml);
+                    $("#mistakePicCard").show();
                 }
 
-                // 🔸 转成 base64 data URL
-                const screenshotData = await screenshotFile.async("base64");
-                const screenshotUrl = "data:image/png;base64," + screenshotData;
-
-                // 🔸 Modal 展示图片
-                $("#screenshotImg").attr("src", screenshotUrl);
-                $("#screenshotModal").modal("show");
+                // 如果没有任何内容展示
+                if (!$("#mistakeQstCard").is(":visible") && !$("#mistakeAnsCard").is(":visible") && !$("#mistakeExpCard").is(":visible") && !$("#mistakeNoteCard").is(":visible") && !$("#mistakePicCard").is(":visible")) {
+                    swal("无详情内容");
+                }
 
             } catch (err) {
                 console.error(err);
@@ -1388,6 +1540,7 @@ async function noteGetAll(page = 1) {
         const pageNotes = allNotes.slice(start, end);
 
         pageNotes.forEach((item, i) => {
+            const safeName = (item.fileName || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const template = `
                 <a onclick="if(downloading)swal('你已经在下载一个文件，耐心等待哦');else noteDownload('${item.fileId}','${item.fileName}')" 
                    class="list-group-item list-group-item-action py-3 lh-tight a-note" 
@@ -1395,7 +1548,10 @@ async function noteGetAll(page = 1) {
                    style="background:rgba(255,255,255,0) !important;">
                     <div class="d-flex w-100 align-items-center justify-content-between">
                         <strong class="note-name mb-1">${item.fileName}</strong>
-                        <small>${item.updateTime}</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <span style="cursor:pointer;font-size:1.1rem;opacity:0.5;" title="分享" onclick="event.stopPropagation();event.preventDefault();openShareModal('note','${item.fileId}','${safeName}')">📤</span>
+                            <small>${item.updateTime}</small>
+                        </div>
                     </div>
                 </a>`;
             $("#noteList2").append(template);
@@ -2932,7 +3088,8 @@ function selectCourse(id, title) {
     $("#course_input").val(title);
     $("#id_input").val(id);
     $("#courseModal").modal("hide");
-
+    window._currentShare = { type: 'course', id: id, title: title };
+    $('#courseShareBtn').show();
     // 加载课程详情
     show_class();
 }
@@ -2981,6 +3138,8 @@ function show_class() {
                             $("#cid_card .chapter-item").removeClass("selected");
                             $(this).addClass("selected");
                             $("#cid_input").val(c.id);
+                            window._currentShare = { type: 'chapter', id: $("#id_input").val(), chapterId: c.id, title: c.title };
+                            $('#courseShareBtn').show();
                             show_page();
                         });
                     } else {
@@ -3196,7 +3355,7 @@ async function getUserId() {
 
 // 更新 URL 预览
 function updateUrlPreview() {
-    const prefix = `https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/`;
+    const prefix = window.ossBaseUrl || "https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/";
     const fc = document.getElementById("selectFc").value;
     const userId = document.getElementById("urlUserId").textContent;
     const nonce = document.getElementById("inputNonce").value || "自动生成";
@@ -3257,6 +3416,10 @@ async function loadRoot() {
         window.currentUserId = userId;
         document.getElementById("urlUserId").textContent = "/res/" + userId + "/";
 
+        // 通过 API 获取 OSS bucket/region，构建根 URL
+        await fetchOssBaseUrl(userId);
+        document.getElementById("ossPrefix").textContent = window.ossBaseUrl;
+
         // 监听变化更新预览
         document.getElementById("inputNonce").addEventListener("input", updateUrlPreview);
         document.getElementById("inputFileName").addEventListener("input", updateUrlPreview);
@@ -3266,8 +3429,35 @@ async function loadRoot() {
     } catch (e) {
         console.error(e);
         document.getElementById("urlUserId").textContent = "无法获取用户ID";
+        document.getElementById("ossPrefix").textContent = "获取失败";
     }
 };
+
+// 调用 GenerateTokenV2Async 获取 bucket/region 并缓存根 URL
+async function fetchOssBaseUrl(userId) {
+    if (window.ossBaseUrl) return;
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("未登录");
+    const nonce = generateNonce();
+    const ts = Date.now();
+    const raw_str = `${userId}+note_v2+res+1++0+${nonce}+${ts}`;
+    const sign = md5(raw_str);
+    const resp = await fetch(`${window.API_BASE_URL}/api/services/app/ObjectStorage/GenerateTokenV2Async`, {
+        method: "POST",
+        headers: {
+            "Accept": "application/json",
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ fc: 1, fr: 1, ft: 2, fe: "", fo: "0", nonce, ts, sign })
+    });
+    const data = await resp.json();
+    if (!data.result) throw new Error("获取 OSS 配置失败");
+    const r = data.result;
+    const region = r.region || "oss-cn-hangzhou";
+    const bucket = r.bucket || "ezy-sxz";
+    window.ossBaseUrl = `https://${bucket}.${region}.aliyuncs.com/`;
+}
 
 // 上传按钮事件
 async function uploadFileBtn() {
@@ -3372,6 +3562,7 @@ function renderNotes(notes) {
             item.onclick = () => noteDownload(note.fileId, note.fileName);
         }
 
+        const safeName = (note.fileName || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         item.innerHTML = `
             <div class="d-flex align-items-center">
                 <img src="${iconPath}" alt="" style="width:20px;height:20px;margin-right:8px;">
@@ -3380,9 +3571,12 @@ function renderNotes(notes) {
                     <small class="text-muted">创建时间: ${note.createTime}</small>
                 </div>
             </div>
-            <span class="badge bg-${isFolder ? 'secondary' : 'primary'} rounded-pill">
-                ${isFolder ? '文件夹' : '笔记'}
-            </span>
+            <div class="d-flex align-items-center gap-2">
+                ${isFolder ? '' : `<span style="cursor:pointer;font-size:1.1rem;opacity:0.5;" title="分享" onclick="event.stopPropagation();event.preventDefault();openShareModal('note','${note.fileId}','${safeName}')">📤</span>`}
+                <span class="badge bg-${isFolder ? 'secondary' : 'primary'} rounded-pill">
+                    ${isFolder ? '文件夹' : '笔记'}
+                </span>
+            </div>
         `;
 
         container.appendChild(item);
@@ -3504,6 +3698,8 @@ async function showExamQuestions(examName, examId) {
     const modalBody = document.getElementById('examModalBody');
 
     modalLabel.textContent = `${examName}`;
+    window._currentShare = { type: 'evaluation', id: examId, title: examName };
+    $('#examShareBtn').show();
     modalBody.innerHTML = `<div class="text-center py-3 text-muted"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">加载中...</div></div>`;
 
     const exam = await fetchExamTask(token, examId);
@@ -3656,6 +3852,7 @@ function renderSearchResults() {
     }
 
     pageNotes.forEach(item => {
+        const safeName = (item.fileName || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const template = `
         <a onclick="if(downloading)swal('你已经在下载一个文件，耐心等待哦');else noteDownload('${item.fileId}','${item.fileName}')"
            class="list-group-item list-group-item-action py-3 lh-tight a-note"
@@ -3663,7 +3860,10 @@ function renderSearchResults() {
            style="background:rgba(255,255,255,0) !important;">
             <div class="d-flex w-100 align-items-center justify-content-between">
                 <strong class="note-name mb-1">${item.fileName}</strong>
-                <small>${item.updateTime}</small>
+                <div class="d-flex align-items-center gap-2">
+                    <span style="cursor:pointer;font-size:1.1rem;opacity:0.5;" title="分享" onclick="event.stopPropagation();event.preventDefault();openShareModal('note','${item.fileId}','${safeName}')">📤</span>
+                    <small>${item.updateTime}</small>
+                </div>
             </div>
         </a>`;
         $list.append(template);
@@ -3757,6 +3957,383 @@ async function loadChangelog() {
     }
 }
 // 返回顶部按钮
+
+// ==================== 分享功能函数 ====================
+
+// 当前正在创建的分享参数
+var _shareData = {};
+
+function openShareModal(resourceType, resourceId, title, chapterId) {
+    _shareData = { resourceType, resourceId, title, chapterId };
+    $('#shareResType').val(resourceType === 'evaluation' ? '新测评' :
+        resourceType === 'quora' ? '随身答' :
+        resourceType === 'course' ? '课程' :
+        resourceType === 'chapter' ? '章节' :
+        resourceType === 'note' ? '笔记' : resourceType);
+    $('#shareTitle').val(title || '');
+    $('#sharePwd').val('');
+    $('#shareExpiry').val('0');
+    $('#shareMaxViews').val('0');
+    $('#shareResultBox').hide();
+    $('#shareCreateBtn').prop('disabled', false).text('生成分享链接');
+    $('#shareCreateModal').modal('show');
+}
+
+async function createShare() {
+    const btn = $('#shareCreateBtn');
+    btn.prop('disabled', true).text('生成中...');
+    $('#shareResultBox').hide();
+
+    try {
+        const resp = await fetch(`${window.SHARE_SERVER}/api/share/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                api_base: window.API_BASE_URL,
+                token: localStorage.getItem('token'),
+                resource_type: _shareData.resourceType,
+                resource_id: _shareData.resourceId,
+                chapter_id: _shareData.chapterId || '',
+                title: $('#shareTitle').val() || _shareData.title,
+                password: $('#sharePwd').val(),
+                expires_hours: parseInt($('#shareExpiry').val()) || 0,
+                max_views: parseInt($('#shareMaxViews').val()) || 0,
+            })
+        });
+        const data = await resp.json();
+        if (!data.success) { swal('创建失败: ' + data.error); btn.prop('disabled', false).text('生成分享链接'); return; }
+
+        // 分享链接统一指向 index.html
+        const link = `${location.origin}${location.pathname.replace(/\/[^/]*$/, '/index.html')}#share=${data.share_id}`;
+        $('#shareLinkInput').val(link);
+        $('#shareResultBox').show();
+        btn.text('已生成');
+    } catch (e) {
+        console.error(e);
+        swal('无法连接分享服务器 (' + window.SHARE_SERVER + ')');
+        btn.prop('disabled', false).text('生成分享链接');
+    }
+}
+
+function copyShareLink() {
+    const input = $('#shareLinkInput');
+    input.select();
+    document.execCommand('copy');
+    swal({ title: '已复制', text: '分享链接已复制到剪贴板', timer: 1500 });
+}
+
+async function loadSharedContent(shareId) {
+    try {
+        // 先获取分享信息
+        const infoResp = await fetch(`${window.SHARE_SERVER}/api/share/${shareId}/info`);
+        const info = await infoResp.json();
+        if (!info.success) { swal('分享不存在或已过期: ' + info.error); return; }
+
+        // 如果需要密码
+        let password = '';
+        if (info.has_password) {
+            password = prompt('此分享需要密码，请输入:') || '';
+            if (!password) return;
+        }
+
+        // 获取内容
+        const resp = await fetch(`${window.SHARE_SERVER}/api/share/${shareId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        const data = await resp.json();
+        if (!data.success) { swal('获取分享失败: ' + data.error); return; }
+
+        // 显示内容
+        showSharedContent(data.content);
+    } catch (e) {
+        console.error('加载分享失败:', e);
+        swal('无法连接到分享服务器 (' + window.SHARE_SERVER + ')');
+    }
+}
+
+// 显示分享内容（复用错题弹窗结构）
+async function showSharedContent(content) {
+    const meta = content._meta || {};
+    var _rendered = false;  // 标志：是否已有分支成功渲染（避免 :visible 被父级 modal 隐藏误判）
+    // 复用 #screenshotModal
+    $("#screenshotImg").attr("src", "");
+    $("#mistakeQstCard").hide(); $("#mistakeQstBody").html("");
+    $("#mistakeAnsCard").hide(); $("#mistakeAnsBody").html("");
+    $("#mistakeExpCard").hide(); $("#mistakeExpBody").html("");
+    $("#mistakeNoteCard").hide();
+    $("#mistakePicCard").hide(); $("#mistakePicBody").html("");
+    $(".modal-title").text(meta.title || '分享内容');
+
+    // 题干
+    if (content.stem) {
+        $("#mistakeQstBody").html(content.stem);
+        $("#mistakeQstCard").show();
+        _rendered = true;
+    }
+    // 答案
+    if (content.answers) {
+        $("#mistakeAnsBody").html(content.answers);
+        $("#mistakeAnsCard").show();
+        _rendered = true;
+    }
+    // 解析
+    if (content.analysis && content.analysis.length > 0) {
+        $("#mistakeExpBody").html(content.analysis.join('<hr>'));
+        $("#mistakeExpCard").show();
+        _rendered = true;
+    }
+    // 笔记截图（server 端已解压 zip 存为 base64 data URL）
+    if (content.note_screenshot) {
+        $("#screenshotImg").attr("src", content.note_screenshot);
+        $("#mistakeNoteCard").show();
+        _rendered = true;
+    }
+    // 图片笔记
+    if (content.pictureNote && content.pictureNote.length > 0) {
+        let picHtml = '<div class="row g-2">';
+        content.pictureNote.forEach(url => {
+            picHtml += `<div class="col-6 col-md-4"><img src="${url}" class="img-fluid rounded border" style="cursor:pointer;" onclick="window.open('${url}')" loading="lazy"></div>`;
+        });
+        picHtml += '</div>';
+        $("#mistakePicBody").html(picHtml);
+        $("#mistakePicCard").show();
+        _rendered = true;
+    }
+    // 新测评（多题目）
+    if (meta.resource_type === 'evaluation' && content.questionUrls && content.questionUrls.length > 0) {
+        if (content.examName) $(".modal-title").text(content.examName);
+        $("#mistakeQstBody").html('<div class="text-center py-3 text-muted"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">加载题目中...</div></div>');
+        $("#mistakeQstCard").show();
+        $("#mistakeQstCard .card-header").text('新测评');
+        $("#screenshotModal").modal("show");
+        loadEvaluationQuestions(content.questionUrls);
+        return;  // 异步渲染完成后会填充内容
+    }
+    // 随身答对话
+    if (meta.resource_type === 'quora' && content.items) {
+        let msgsHtml = '<div style="max-height:500px;overflow:auto;">';
+        (content.items || []).forEach(m => {
+            const bg = (m.senderType === 1 || m.role === 'user') ? 'bg-primary text-white' : 'bg-light';
+            msgsHtml += `<div class="mb-2"><div class="d-inline-block ${bg} rounded-3 px-3 py-2">${m.content || m.text || ''}</div></div>`;
+        });
+        msgsHtml += '</div>';
+        $("#mistakeQstBody").html(msgsHtml);
+        $("#mistakeQstCard").show();
+        _rendered = true;
+    }
+    // 云笔记 / 笔记文件夹（复制 noteDownload 的渲染逻辑）
+    if ((meta.resource_type === 'note' || meta.resource_type === 'note_folder') && content.resourceList && content.resourceList.length > 0) {
+        if (content.fileName) $(".modal-title").text(content.fileName);
+        window._shareNotePages = buildShareNotePages(content.resourceList);
+        window._shareNoteIdx = 0;
+        $("#mistakeQstCard .card-header").text('云笔记');
+        $("#mistakeQstCard").show();
+        renderShareNotePage();
+        return;  // 跳过末尾 .modal("show")，由 renderShareNotePage 控制显示
+    }
+    // 课程/章节（完全复制 show_page + change_all 渲染逻辑）
+    if (meta.resource_type === 'course' || meta.resource_type === 'chapter') {
+        var courseTitle = content.title || meta.title || '';
+        var courseBodyHtml = '';
+        if (courseTitle) courseBodyHtml += '<h5>' + courseTitle + '</h5>';
+        if (content.description) courseBodyHtml += '<p class="text-muted">' + content.description + '</p>';
+        if (content.content) courseBodyHtml += '<div id="shareCourseContent">' + content.content + '</div>';
+        if (courseBodyHtml) {
+            $("#mistakeQstBody").html(courseBodyHtml);
+            $("#mistakeQstCard").show();
+            $("#mistakeQstCard .card-header").text('课程内容');
+            _rendered = true;
+            setTimeout(function() { applyShareCourseTransforms(); }, 50);
+        }
+    }
+    // 兜底：只有前面没有任何分支命中时才显示 JSON
+    if (!_rendered) {
+        $("#mistakeQstBody").html('<pre class="json-view">' + JSON.stringify(content, null, 2) + '</pre>');
+        $("#mistakeQstCard").show();
+    }
+
+    $("#screenshotModal").modal("show");
+}
+
+async function loadEvaluationQuestions(urls) {
+    try {
+        const promises = urls.map(async (url) => {
+            const resp = await fetch(url);
+            const html = await resp.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            doc.querySelectorAll('.toolBar').forEach(el => el.remove());
+            const stem = doc.querySelector('.stem')?.innerHTML || '';
+            const answerEl = doc.querySelector('.answers');
+            let answerHTML = '';
+            if (answerEl) {
+                answerEl.querySelectorAll('h3').forEach(h => h.remove());
+                answerHTML = answerEl.innerHTML.trim();
+            }
+            const analysisEls = doc.querySelectorAll('.analysis');
+            let explanationHTML = '', knowledgeHTML = '';
+            if (analysisEls.length > 0) {
+                const first = analysisEls[0];
+                first.querySelectorAll('h3').forEach(h => h.remove());
+                explanationHTML = first.innerHTML.trim();
+                if (analysisEls[1]) {
+                    const second = analysisEls[1];
+                    second.querySelectorAll('h3').forEach(h => h.remove());
+                    knowledgeHTML = second.innerHTML.trim();
+                }
+            }
+            return { stem, answerHTML, explanationHTML, knowledgeHTML };
+        });
+        const questions = await Promise.all(promises);
+        let qHtml = '<div class="container-fluid">';
+        questions.forEach((q, idx) => {
+            qHtml += `<div class="card mb-3"><div class="card-header fw-bold">题目 ${idx + 1}</div><div class="card-body">`;
+            if (q.stem) qHtml += `<div class="mb-2"><strong>题干:</strong><br>${q.stem}</div>`;
+            if (q.answerHTML) qHtml += `<div class="mb-2"><strong>答案:</strong><br>${q.answerHTML}</div>`;
+            if (q.explanationHTML) qHtml += `<div class="mb-2"><strong>解析:</strong><br>${q.explanationHTML}</div>`;
+            if (q.knowledgeHTML) qHtml += `<div class="mb-2"><strong>知识点:</strong><br>${q.knowledgeHTML}</div>`;
+            qHtml += '</div></div>';
+        });
+        qHtml += '</div>';
+        $("#mistakeQstBody").html(qHtml);
+    } catch (e) {
+        console.error(e);
+        $("#mistakeQstBody").html('<div class="alert alert-danger">加载题目失败: ' + e.message + '</div>');
+    }
+}
+
+// ---- 分享笔记分页渲染（复制 noteDownload 逻辑） ----
+function buildShareNotePages(resourceList) {
+    const pageMap = {};
+    const IMG_RE = /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i;
+    for (let i = 0; i < resourceList.length; i++) {
+        const item = resourceList[i];
+        const ossUrl = item.ossImageUrl || item.url || '';
+        if (!ossUrl || !IMG_RE.test(ossUrl)) continue;  // 非图片跳过
+        const page = (item.pageIndex || 0) + 1;
+        if (!pageMap[page]) pageMap[page] = { originals: [] };
+        const fullUrl = ossUrl.startsWith('http')
+            ? (window.proxyUrl ? window.proxyUrl(ossUrl) : ossUrl)
+            : (window.proxyUrl ? window.proxyUrl('http://friday-note.oss-cn-hangzhou.aliyuncs.com/' + ossUrl) : 'http://friday-note.oss-cn-hangzhou.aliyuncs.com/' + ossUrl);
+        const imgSrc = ossUrl.startsWith('http')
+            ? (window.proxyImgSrc ? window.proxyImgSrc(ossUrl) : ossUrl)
+            : (window.proxyImgSrc ? window.proxyImgSrc('http://friday-note.oss-cn-hangzhou.aliyuncs.com/' + ossUrl) : 'http://friday-note.oss-cn-hangzhou.aliyuncs.com/' + ossUrl);
+        if (item.resourceType == 2) {
+            pageMap[page].thumbnail = { url: fullUrl, imgSrc: imgSrc };
+        } else {
+            pageMap[page].originals.push({ url: fullUrl, imgSrc: imgSrc, ext: ossUrl.split('.').pop() });
+        }
+    }
+    const pages = Object.keys(pageMap).sort((a, b) => a - b);
+    return pages.map(p => pageMap[p]);
+}
+
+function renderShareNotePage() {
+    const pages = window._shareNotePages || [];
+    const idx = window._shareNoteIdx || 0;
+    if (pages.length === 0) {
+        $("#mistakeQstBody").html('<p class="text-muted text-center py-4">无页面内容</p>');
+        $("#screenshotModal").modal("show");
+        return;
+    }
+    const page = pages[idx];
+    const pageNum = idx + 1;
+    let html = `<div class="d-flex justify-content-between align-items-center mb-3">
+        <button class="btn btn-sm btn-outline-primary" ${idx === 0 ? 'disabled' : ''} onclick="window._shareNoteIdx--;renderShareNotePage();">上一页</button>
+        <span class="text-muted">第 ${pageNum} / ${pages.length} 页</span>
+        <button class="btn btn-sm btn-outline-primary" ${idx === pages.length - 1 ? 'disabled' : ''} onclick="window._shareNoteIdx++;renderShareNotePage();">下一页</button>
+    </div>`;
+
+    // 缩略图
+    if (page.thumbnail) {
+        html += `<div class="text-center mb-3">
+            <img src="${page.thumbnail.imgSrc || page.thumbnail.url}" class="img-fluid rounded" style="max-width:80%;max-height:350px;object-fit:contain;box-shadow:0 2px 8px #ccc;" alt="页面总览">
+        </div>`;
+    }
+    // 原图
+    if (page.originals && page.originals.length > 0) {
+        html += '<div class="d-flex flex-wrap justify-content-center gap-3">';
+        page.originals.forEach((orig, j) => {
+            html += `<img src="${orig.imgSrc || orig.url}" class="img-fluid rounded" style="max-height:200px;object-fit:contain;box-shadow:0 1px 4px #bbb;cursor:pointer;" onclick="window.open('${orig.url}')" loading="lazy" alt="原图${j + 1}">`;
+        });
+        html += '</div>';
+    }
+
+    $("#mistakeQstBody").html(html);
+    $("#screenshotModal").modal("show");
+}
+
+// ---- 分享课程/章节 DOM 变换（复制 change_all 逻辑） ----
+function applyShareCourseTransforms() {
+    var container = document.getElementById('shareCourseContent');
+    if (!container) return;
+    changeShareObjects(container);
+    changeShareVideos(container);
+    changeShareDivs(container);
+}
+
+function changeShareObjects(container) {
+    var objs = container.getElementsByTagName('object');
+    while (objs.length > 0) {
+        var obj = objs[0];
+        var name = obj.name || '';
+        var link = obj.data || '';
+        var p = document.createElement('p');
+        p.innerHTML = '附件：' + name + ' <a href="' + link + '" target="_blank">点击下载</a>';
+        obj.parentNode.insertBefore(p, obj);
+        obj.remove();
+    }
+}
+
+function changeShareVideos(container) {
+    var vids = container.getElementsByTagName('video');
+    for (var i = vids.length - 1; i >= 0; i--) {
+        var vid = vids[i];
+        if (!vid.hasAttribute('controls')) {
+            var link = vid.src || '';
+            var p = document.createElement('p');
+            p.innerHTML = '视频附件：<a href="' + link + '" target="_blank">点击下载</a>';
+            vid.parentNode.insertBefore(p, vid);
+            vid.remove();
+        }
+    }
+}
+
+function changeShareDivs(container) {
+    var divs = container.getElementsByTagName('div');
+    for (var i = divs.length - 1; i >= 0; i--) {
+        var d = divs[i];
+        if (d.hasAttribute('data-type')) {
+            var type = d.getAttribute('data-type');
+            if (type === 'ppt' || type === 'pdf') {
+                var name = d.getAttribute('data-name') || '';
+                var link = d.getAttribute('data-url') || '';
+                var p = document.createElement('p');
+                p.innerHTML = '附件：' + name + ' <a href="' + link + '" target="_blank">点击下载</a>';
+                d.parentNode.insertBefore(p, d);
+                d.remove();
+            } else if (type === 'image-block') {
+                var img = d.querySelector('img');
+                if (img) img.setAttribute('width', '100%');
+                d.setAttribute('data-type', 'image-block-changed');
+            }
+        }
+        if (d.hasAttribute('data-id')) {
+            var title = d.getAttribute('data-title') || '';
+            var p = document.createElement('p');
+            p.className = 'text-muted';
+            p.textContent = '无法查看习题：' + title;
+            d.parentNode.insertBefore(p, d);
+            d.remove();
+        }
+    }
+    var imgs = container.getElementsByTagName('img');
+    for (var j = 0; j < imgs.length; j++) {
+        if (!imgs[j].hasAttribute('width')) imgs[j].style.maxWidth = '100%';
+    }
+}
 
 
 

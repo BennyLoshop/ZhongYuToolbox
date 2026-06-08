@@ -1,4 +1,6 @@
 (() => {
+    window.API_BASE_URL = localStorage.getItem("apiBaseUrl") || "https://zyapi.loshop.com.cn";
+    window.API_BASE_BASE_URL = localStorage.getItem("apiBaseOrigin") || "https://zyapi.loshop.com.cn";
     window.proxyBaseUrl = "https://zyapi.loshop.com.cn/picAgent/";
     let breadcrumbStack = [
         { id: "0", name: "根目录" }
@@ -233,7 +235,76 @@
     });
 })();
 
+// ==================== 分享功能函数 ====================
+window.SHARE_SERVER = localStorage.getItem("shareServer") || "https://zytbshareapi.loshop.com.cn";
+var _shareData = {};
 
+function openShareModal(resourceType, resourceId, title, chapterId) {
+    _shareData = { resourceType, resourceId, title, chapterId };
+    $('#shareResType').val(resourceType === 'mistake' ? '错题' :
+        resourceType === 'evaluation' ? '新测评' :
+        resourceType === 'quora' ? '随身答' :
+        resourceType === 'course' ? '课程' :
+        resourceType === 'chapter' ? '章节' :
+        resourceType === 'note' ? '笔记' : resourceType);
+    $('#shareTitle').val(title || '');
+    $('#sharePwd').val('');
+    $('#shareExpiry').val('0');
+    $('#shareMaxViews').val('0');
+    $('#shareResultBox').hide();
+    $('#shareCreateBtn').prop('disabled', false).text('生成分享链接');
+    $('#shareCreateModal').modal('show');
+}
+
+async function createShare() {
+    const btn = $('#shareCreateBtn');
+    btn.prop('disabled', true).text('创建中...');
+    try {
+        const resp = await fetch(`${window.SHARE_SERVER}/api/share/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                api_base: window.API_BASE_URL,
+                token: localStorage.getItem('token'),
+                resource_type: _shareData.resourceType,
+                resource_id: _shareData.resourceId,
+                chapter_id: _shareData.chapterId || '',
+                title: $('#shareTitle').val() || _shareData.title,
+                password: $('#sharePwd').val(),
+                expires_hours: parseInt($('#shareExpiry').val()) || 0,
+                max_views: parseInt($('#shareMaxViews').val()) || 0,
+            })
+        });
+        const data = await resp.json();
+        if (!data.success) { swal('创建失败: ' + data.error); btn.prop('disabled', false).text('生成分享链接'); return; }
+
+        // 分享链接统一指向 index.html
+        const link = `${location.origin}${location.pathname.replace(/\/[^/]*$/, '/index.html')}#share=${data.share_id}`;
+        $('#shareLinkInput').val(link);
+        $('#shareResultBox').show();
+        btn.text('已生成');
+    } catch (e) {
+        console.error(e);
+        swal('无法连接分享服务器 (' + window.SHARE_SERVER + ')');
+        btn.prop('disabled', false).text('生成分享链接');
+    }
+}
+
+function copyShareLink() {
+    const input = $('#shareLinkInput');
+    input.select();
+    document.execCommand('copy');
+    swal({ title: '已复制', text: '分享链接已复制到剪贴板', timer: 1500 });
+}
+
+// 如果当前页面收到了 #share=xxx，重定向到 index.html 统一查看
+(function checkShareHash() {
+    var m = location.hash.match(/^#share=([a-f0-9]+)/);
+    if (m) {
+        var shareId = m[1];
+        location.href = location.origin + location.pathname.replace(/\/[^/]*$/, '/index.html') + '#share=' + shareId;
+    }
+})();
 
 async function detectLocalProxy() {
     let proxyBaseUrl = "https://zyapi.loshop.com.cn/picAgent/";
@@ -681,6 +752,18 @@ async function mistake_query() {
         tb.data("id", data[i].id);
         tb.click(async function () {
             try {
+                // 显示 loading
+                $("#screenshotImg").attr("src", "");
+                $("#mistakeQstCard").hide(); $("#mistakeQstBody").html("");
+                $("#mistakeAnsCard").hide(); $("#mistakeAnsBody").html("");
+                $("#mistakeExpCard").hide(); $("#mistakeExpBody").html("");
+                $("#mistakeNoteCard").hide();
+                $("#mistakePicCard").hide(); $("#mistakePicBody").html("");
+                const modalBody = document.querySelector("#screenshotModal .modal-body");
+                const origHtml = modalBody.innerHTML;
+                modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">加载中...</div></div>';
+                $("#screenshotModal").modal("show");
+
                 // 获取题目详情
                 let res = await fetch(`https://zyapi.loshop.com.cn/api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync?itemId=` + $(this).data("id"), {
                     method: "GET",
@@ -691,47 +774,87 @@ async function mistake_query() {
                 });
                 let detail = await res.json();
                 detail = detail.result;
-                if (!detail) return;
+                if (!detail) { modalBody.innerHTML = origHtml; swal("无数据"); return; }
 
-                let noteSrc = detail.note;
-                if (!noteSrc) {
-                    swal("无笔记");
-                    return;
+                modalBody.innerHTML = origHtml;
+
+                // 1. 题目 & 答案 & 解析
+                if (detail.qstPath) {
+                    try {
+                        const qstHtml = await (await fetch(`https://zyapi.loshop.com.cn${detail.qstPath}?showAnalysis=true`)).text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(qstHtml, "text/html");
+                        // 题干
+                        const stem = doc.querySelector('.stem')?.innerHTML || '';
+                        if (stem) {
+                            $("#mistakeQstBody").html(stem);
+                            $("#mistakeQstCard").show();
+                        }
+                        // 答案
+                        const answerEl = doc.querySelector('.answers');
+                        if (answerEl) {
+                            answerEl.querySelectorAll('h3').forEach(h => h.remove());
+                            const answerHTML = answerEl.innerHTML.trim();
+                            if (answerHTML) {
+                                $("#mistakeAnsBody").html(answerHTML);
+                                $("#mistakeAnsCard").show();
+                            }
+                        }
+                        // 解析 & 知识点
+                        const analysisEls = doc.querySelectorAll('.analysis');
+                        if (analysisEls.length > 0) {
+                            let expParts = [];
+                            analysisEls.forEach(el => {
+                                const clone = el.cloneNode(true);
+                                clone.querySelectorAll('h3').forEach(h => h.remove());
+                                const html = clone.innerHTML.trim();
+                                if (html) expParts.push(html);
+                            });
+                            if (expParts.length > 0) {
+                                $("#mistakeExpBody").html(expParts.join('<hr>'));
+                                $("#mistakeExpCard").show();
+                            }
+                        }
+                    } catch (e) { console.warn("获取题目失败:", e); }
                 }
 
-                // 🔸 使用 proxyBaseUrl 通过 fetch 下载 zip 文件
-                const zipUrl = window.proxyBaseUrl + noteSrc;
-                const zipResponse = await fetch(zipUrl);
-                if (!zipResponse.ok) {
-                    swal("下载失败");
-                    return;
+                // 2. 笔记（fileList.json → screenshot.png）
+                if (detail.note) {
+                    try {
+                        const fileListUrl = window.proxyBaseUrl + detail.note;
+                        const flResp = await fetch(fileListUrl);
+                        if (flResp.ok) {
+                            const fileList = await flResp.json();
+                            const pngEntry = fileList.find(f => f.url && f.url.toLowerCase().endsWith("screenshot.png"));
+                            if (pngEntry) {
+                                const pngUrl = window.proxyBaseUrl + pngEntry.url;
+                                const pngResp = await fetch(pngUrl);
+                                if (pngResp.ok) {
+                                    const pngBlob = await pngResp.blob();
+                                    $("#screenshotImg").attr("src", URL.createObjectURL(pngBlob));
+                                    $("#mistakeNoteCard").show();
+                                }
+                            }
+                        }
+                    } catch (e) { console.warn("获取笔记失败:", e); }
                 }
 
-                const zipBlob = await zipResponse.blob();
-
-                // 🔸 用 JSZip 解压
-                const zip = await JSZip.loadAsync(zipBlob);
-
-                // 🔸 找到 screenshot.png（不确定具体路径，所以遍历）
-                let screenshotFile = null;
-                zip.forEach((relativePath, zipEntry) => {
-                    if (relativePath.toLowerCase().endsWith("screenshot.png")) {
-                        screenshotFile = zipEntry;
-                    }
-                });
-
-                if (!screenshotFile) {
-                    swal("未找到 screenshot.png");
-                    return;
+                // 3. 图片笔记
+                if (detail.pictureNote && detail.pictureNote.length > 0) {
+                    let picHtml = '<div class="row g-2">';
+                    detail.pictureNote.forEach(url => {
+                        const proxyPicUrl = window.proxyBaseUrl + url;
+                        picHtml += `<div class="col-6 col-md-4"><img src="${proxyPicUrl}" class="img-fluid rounded border" style="cursor:pointer;" onclick="window.open('${proxyPicUrl}')" loading="lazy"></div>`;
+                    });
+                    picHtml += '</div>';
+                    $("#mistakePicBody").html(picHtml);
+                    $("#mistakePicCard").show();
                 }
 
-                // 🔸 转成 base64 data URL
-                const screenshotData = await screenshotFile.async("base64");
-                const screenshotUrl = "data:image/png;base64," + screenshotData;
-
-                // 🔸 Modal 展示图片
-                $("#screenshotImg").attr("src", screenshotUrl);
-                $("#screenshotModal").modal("show");
+                // 如果没有任何内容展示
+                if (!$("#mistakeQstCard").is(":visible") && !$("#mistakeAnsCard").is(":visible") && !$("#mistakeExpCard").is(":visible") && !$("#mistakeNoteCard").is(":visible") && !$("#mistakePicCard").is(":visible")) {
+                    swal("无详情内容");
+                }
 
             } catch (err) {
                 console.error(err);
@@ -951,6 +1074,7 @@ async function noteGetAll(page = 1) {
         const pageNotes = allNotes.slice(start, end);
 
         pageNotes.forEach((item, i) => {
+            const safeName = (item.fileName || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const template = `
                 <a onclick="if(downloading)swal('你已经在下载一个文件，耐心等待哦');else noteDownload('${item.fileId}','${item.fileName}')" 
                    class="list-group-item list-group-item-action py-3 lh-tight a-note" 
@@ -958,7 +1082,10 @@ async function noteGetAll(page = 1) {
                    style="background:rgba(255,255,255,0) !important;">
                     <div class="d-flex w-100 align-items-center justify-content-between">
                         <strong class="note-name mb-1">${item.fileName}</strong>
-                        <small>${item.updateTime}</small>
+                        <div class="d-flex align-items-center" style="gap:8px;">
+                            <span style="cursor:pointer;font-size:1.1rem;opacity:0.5;" title="分享" onclick="event.stopPropagation();event.preventDefault();openShareModal('note','${item.fileId}','${safeName}')">📤</span>
+                            <small>${item.updateTime}</small>
+                        </div>
                     </div>
                 </a>`;
             $("#noteList2").append(template);
@@ -3209,6 +3336,7 @@ function renderSearchResults() {
     }
 
     pageNotes.forEach(item => {
+        const safeName = (item.fileName || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const template = `
         <a onclick="if(downloading)swal('你已经在下载一个文件，耐心等待哦');else noteDownload('${item.fileId}','${item.fileName}')"
            class="list-group-item list-group-item-action py-3 lh-tight a-note"
@@ -3216,7 +3344,10 @@ function renderSearchResults() {
            style="background:rgba(255,255,255,0) !important;">
             <div class="d-flex w-100 align-items-center justify-content-between">
                 <strong class="note-name mb-1">${item.fileName}</strong>
-                <small>${item.updateTime}</small>
+                <div class="d-flex align-items-center" style="gap:8px;">
+                    <span style="cursor:pointer;font-size:1.1rem;opacity:0.5;" title="分享" onclick="event.stopPropagation();event.preventDefault();openShareModal('note','${item.fileId}','${safeName}')">📤</span>
+                    <small>${item.updateTime}</small>
+                </div>
             </div>
         </a>`;
         $list.append(template);
