@@ -1249,6 +1249,11 @@ var _hmt = _hmt || [];
                     <h5 class="modal-title">创建分享</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
+                <div class="alert alert-info alert-dismissible fade show rounded-0 mb-0" role="alert" style="border-radius:0;">
+                    <small>分享功能需要服务器资源支持，如果方便的话，欢迎支持一下作者</small>
+                    <button type="button" class="btn btn-sm btn-warning ms-2" onclick="$('#shareCreateModal').modal('hide'); $('a[href=&quot;#Donate&quot;]').tab('show');">支持作者</button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
+                </div>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">资源类型</label>
