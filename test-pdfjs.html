@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <title>测试 PDF.js 加载</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            const result = document.getElementById('result');
+            
+            // 检查 pdfjsLib 是否可用
+            if (typeof pdfjsLib !== 'undefined') {
+                result.innerHTML = '<div class="alert alert-success">✅ pdfjsLib 已加载！<br>版本：' + pdfjsLib.version + '</div>';
+            } else if (typeof pdfjs !== 'undefined') {
+                result.innerHTML = '<div class="alert alert-success">✅ pdfjs 已加载！</div>';
+            } else {
+                result.innerHTML = '<div class="alert alert-danger">❌ PDF.js 未加载！</div>';
+            }
+            
+            // 显示所有全局变量
+            result.innerHTML += '<hr><h5>全局变量检查：</h5>';
+            result.innerHTML += '<div>window.pdfjsLib: ' + (typeof window.pdfjsLib !== 'undefined' ? '✅ 存在' : '❌ 不存在') + '</div>';
+            result.innerHTML += '<div>window.pdfjs: ' + (typeof window.pdfjs !== 'undefined' ? '✅ 存在' : '❌ 不存在') + '</div>';
+        });
+    </script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>PDF.js 加载测试</h1>
+        <div id="result">正在检查...</div>
+    </div>
+</body>
+</html>

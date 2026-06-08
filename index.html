@@ -14,6 +14,7 @@
     <script src="aliyun-oss-sdk.min.js"></script>
     <script src="jspdf.umd.min.js"></script>
     <script src="crypto-js.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <link rel="stylesheet" type="text/css" href="sweetalert.css">
     <script type="text/javascript" src="sweetalert-dev.js"></script>
@@ -394,6 +395,10 @@ var _hmt = _hmt || [];
                             <button class="nav-link" id="search-tab" data-bs-toggle="tab" data-bs-target="#search"
                                 type="button" role="tab">搜索</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="pdf-upload-tab" data-bs-toggle="tab" data-bs-target="#pdfUpload"
+                                type="button" role="tab">PDF上传</button>
+                        </li>
                     </ul>
 
                     <!-- tab content -->
@@ -445,6 +450,73 @@ var _hmt = _hmt || [];
                                 <div id="noteSearchList" class="list-group border-bottom scrollarea"
                                     style="background:rgba(255,255,255,0) !important;"></div>
                                 <div id="searchPagination"></div>
+                            </div>
+                        </div>
+
+                        <!-- PDF上传子标签内容区 -->
+                        <div class="tab-pane fade" id="pdfUpload" role="tabpanel">
+                            <div class="container mt-3">
+                                <div class="card">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">PDF上传云笔记</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- 笔记名称输入 -->
+                                        <div class="mb-3">
+                                            <label for="pdfNoteName" class="form-label">笔记名称</label>
+                                            <input type="text" class="form-control" id="pdfNoteName" 
+                                                   placeholder="请输入笔记名称（自动填充PDF文件名）">
+                                        </div>
+
+                                        <!-- PDF文件选择 -->
+                                        <div class="mb-3">
+                                            <label for="pdfFileInput" class="form-label">选择PDF文件</label>
+                                            <input type="file" class="form-control" id="pdfFileInput" 
+                                                   accept=".pdf" onchange="handlePdfSelect(event)">
+                                            <div id="pdfFileInfo" class="mt-2"></div>
+                                        </div>
+
+                                        <!-- 进度条 -->
+                                        <div class="mb-3">
+                                            <div class="progress" style="height: 25px;">
+                                                <div id="pdfProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                     role="progressbar" style="width: 0%;" 
+                                                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                            </div>
+                                            <small id="pdfProgressText" class="text-muted">等待上传...</small>
+                                        </div>
+
+                                        <!-- 操作按钮 -->
+                                        <div class="mb-3">
+                                            <button class="btn btn-primary" id="btnUploadPdf" onclick="uploadPdfAsNote()">
+                                                开始上传
+                                            </button>
+                                        </div>
+
+                                        <!-- 预览区域 -->
+                                        <div class="mb-3">
+                                            <label class="form-label">预览（前5页）</label>
+                                            <div id="pdfPreviewContainer" class="border rounded p-3" 
+                                                 style="max-height: 400px; overflow-y: auto; background: #f8f9fa;">
+                                                <p class="text-muted text-center">预览将在此显示...</p>
+                                            </div>
+                                        </div>
+
+                                        <!-- 完整预览区域 -->
+                                        <div id="pdfPreviewArea"></div>
+
+                                        <!-- 使用说明 -->
+                                        <div class="alert alert-info mt-3">
+                                            <h6>使用说明：</h6>
+                                            <ul class="mb-0">
+                                                <li>选择PDF文件后，系统会自动将每一页转换为图片</li>
+                                                <li>所有图片将打包为ZIP文件，便于下载和分享</li>
+                                                <li>点击"上传转换"开始处理，处理完成后可下载ZIP或保存到云笔记</li>
+                                                <li>支持前端解压预览，无需服务器端解压</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -1295,6 +1367,7 @@ var _hmt = _hmt || [];
 
     <script src="DPlayer.min.js"></script>
     <script src="index.js"></script>
+    <script src="pdf-upload.js"></script>
 
     <script>
         $("form .dropdown-item").click(function () {

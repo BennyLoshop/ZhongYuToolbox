@@ -3405,7 +3405,20 @@ async function uploadFile(file, userId, fc, nonceInput, fileNameInput) {
         body: JSON.stringify(json_data)
     });
 
-    const data = await resp.json();
+    if (!resp.ok) {
+        const errorText = await resp.text();
+        throw new Error(`服务器响应错误(${resp.status}): ${errorText.substring(0, 100)}`);
+    }
+
+    const responseText = await resp.text();
+    let data;
+    try {
+        data = JSON.parse(responseText);
+    } catch (parseError) {
+        console.error('JSON解析失败:', parseError, '响应内容:', responseText);
+        throw new Error('服务器返回数据格式错误，请重新登录后再试');
+    }
+
     if (!data.result) throw new Error("获取 token 失败: " + JSON.stringify(data));
     const result = data.result;
 
