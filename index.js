@@ -998,8 +998,6 @@ async function loadMoreQuestions() {
         $(ques_list).append(col);
     });
 
-
-
     quesSkip += data.length;
     if (data.length < quesTake) {
         quesAllLoaded = true;
@@ -1071,7 +1069,9 @@ async function previewQuestion(sessionId) {
             </div>
             <div class="col-md-8 col-lg-9 d-flex flex-column align-items-center justify-content-center p-4">
                 <div class="w-100 text-end mb-1">
-                    <span style="cursor:pointer;font-size:1.2rem;opacity:0.5;" title="分享" onclick="openShareModal('quora','${sessionId}','随身答对话')">📤</span>
+                    <span class="share-quora-btn btn btn-sm btn-outline-primary"
+                    data-session-id="${sessionId}"
+                    style="cursor:pointer;" title="分享">分享</span>
                 </div>
                 ${rightHtml}
             </div>
@@ -1546,13 +1546,12 @@ async function noteGetAll(page = 1) {
                    class="list-group-item list-group-item-action py-3 lh-tight a-note" 
                    aria-current="true" 
                    style="background:rgba(255,255,255,0) !important;">
-                    <div class="d-flex w-100 align-items-center justify-content-between">
-                        <strong class="note-name mb-1">${item.fileName}</strong>
-                        <div class="d-flex align-items-center gap-2">
-                            <span style="cursor:pointer;font-size:1.1rem;opacity:0.5;" title="分享" onclick="event.stopPropagation();event.preventDefault();openShareModal('note','${item.fileId}','${safeName}')">📤</span>
-                            <small>${item.updateTime}</small>
+                        <div class="d-flex w-100 align-items-center justify-content-between">
+                            <strong class="note-name mb-1">${item.fileName}</strong>
+                            <div class="d-flex align-items-center gap-2">
+                                <small>${item.updateTime}</small>
+                            </div>
                         </div>
-                    </div>
                 </a>`;
             $("#noteList2").append(template);
         });
@@ -1693,6 +1692,7 @@ async function noteDownload(fileId, name) {
         
     <button type="button" class="btn btn-success me-2" id="exportPdfBtn">导出为PDF</button>
         <button type="button" class="btn btn-info me-2" onclick="noteDownload2('${fileId}', '${name}')" data-bs-dismiss="modal">下载笔记</button>
+        <button type="button" class="btn btn-outline-primary me-2" id="noteShareBtn" style="display:none;">分享</button>
         <button type="button" class="btn btn-warning" data-bs-dismiss="modal" onclick="$('#notePreviewModal').remove();">关闭</button>
     </div>
 </div>
@@ -1957,6 +1957,11 @@ async function noteDownload(fileId, name) {
     currentPage = 0;
     renderPage(currentPage);
 
+    // 设置分享按钮
+    $('#noteShareBtn').show().off('click').on('click', function() {
+        openShareModal('note', fileId, name);
+    });
+
     $('#notePreviewModal').modal('show');
     this.downloading = 0;
 }
@@ -2037,6 +2042,16 @@ function shellsort(data) {
 }
 
 async function quoraInit() {
+    // 全局事件委托：随答分享按钮（只需绑定一次）
+    if (!window._quoraShareDelegated) {
+        $(document).off('click.quoraShare').on('click.quoraShare', '.share-quora-btn', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            openShareModal('quora', $(this).data('sessionId'), '随身答对话');
+        });
+        window._quoraShareDelegated = true;
+    }
+
     let data = await fetch(`${window.API_BASE_URL}/api/services/app/Quora/GetCatalogs`, {
         method: "GET",
         headers: {
@@ -3572,7 +3587,6 @@ function renderNotes(notes) {
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
-                ${isFolder ? '' : `<span style="cursor:pointer;font-size:1.1rem;opacity:0.5;" title="分享" onclick="event.stopPropagation();event.preventDefault();openShareModal('note','${note.fileId}','${safeName}')">📤</span>`}
                 <span class="badge bg-${isFolder ? 'secondary' : 'primary'} rounded-pill">
                     ${isFolder ? '文件夹' : '笔记'}
                 </span>
@@ -3861,7 +3875,6 @@ function renderSearchResults() {
             <div class="d-flex w-100 align-items-center justify-content-between">
                 <strong class="note-name mb-1">${item.fileName}</strong>
                 <div class="d-flex align-items-center gap-2">
-                    <span style="cursor:pointer;font-size:1.1rem;opacity:0.5;" title="分享" onclick="event.stopPropagation();event.preventDefault();openShareModal('note','${item.fileId}','${safeName}')">📤</span>
                     <small>${item.updateTime}</small>
                 </div>
             </div>
@@ -3976,8 +3989,19 @@ function openShareModal(resourceType, resourceId, title, chapterId) {
     $('#shareMaxViews').val('0');
     $('#shareResultBox').hide();
     $('#shareCreateBtn').prop('disabled', false).text('生成分享链接');
+    
+    // 隐藏其他模态框（避免层级问题）
+    $('#notePreviewModal').modal('hide');
+    
     $('#shareCreateModal').modal('show');
 }
+
+// 分享模态框关闭时，如果是从笔记模态框打开的，则重新显示笔记模态框
+$('#shareCreateModal').on('hidden.bs.modal', function () {
+    if (_shareData.resourceType === 'note') {
+        $('#notePreviewModal').modal('show');
+    }
+});
 
 async function createShare() {
     const btn = $('#shareCreateBtn');
@@ -4111,16 +4135,28 @@ async function showSharedContent(content) {
         loadEvaluationQuestions(content.questionUrls);
         return;  // 异步渲染完成后会填充内容
     }
-    // 随身答对话
-    if (meta.resource_type === 'quora' && content.items) {
-        let msgsHtml = '<div style="max-height:500px;overflow:auto;">';
-        (content.items || []).forEach(m => {
-            const bg = (m.senderType === 1 || m.role === 'user') ? 'bg-primary text-white' : 'bg-light';
-            msgsHtml += `<div class="mb-2"><div class="d-inline-block ${bg} rounded-3 px-3 py-2">${m.content || m.text || ''}</div></div>`;
+    // 随身答对话（显示快照图片）
+    if (meta.resource_type === 'quora' && content.items && content.items.length > 0) {
+        let imgsHtml = '';
+        content.items.forEach((m, idx) => {
+            const snapShot = m.snapShot || '';
+            if (snapShot) {
+                const userName = m.userName || '';
+                const sendTime = m.sendTime || '';
+                imgsHtml += `
+                    <div class="mb-3">
+                        <div class="card">
+                            <img src="${snapShot}" class="card-img-top" alt="问题快照" style="cursor:pointer;" onclick="window.open('${snapShot}')">
+                            <div class="card-footer small text-muted">
+                                ${userName ? '提问者: ' + userName + ' ' : ''}${sendTime}
+                            </div>
+                        </div>
+                    </div>`;
+            }
         });
-        msgsHtml += '</div>';
-        $("#mistakeQstBody").html(msgsHtml);
+        $("#mistakeQstBody").html(imgsHtml);
         $("#mistakeQstCard").show();
+        $("#mistakeQstCard .card-header").text('随身答对话');
         _rendered = true;
     }
     // 云笔记 / 笔记文件夹（复制 noteDownload 的渲染逻辑）

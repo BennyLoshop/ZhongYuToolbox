@@ -1122,7 +1122,7 @@ var _hmt = _hmt || [];
                     <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#courseModal">
                         更换课程
                     </button>
-                    <button class="btn btn-outline-success" id="courseShareBtn" type="button" style="display:none;" title="分享此课程" onclick="(function(){var s=window._currentShare;if(s)openShareModal(s.type,s.id,s.title,s.chapterId);})()">📤 分享</button>
+                    <button class="btn btn-outline-success" id="courseShareBtn" type="button" style="display:none;" title="分享此课程" onclick="(function(){var s=window._currentShare;if(s)openShareModal(s.type,s.id,s.title,s.chapterId);})()">分享</button>
                 </div>
                 <div class="input-group mb-3">
                     <div id="cid_card" class="card"
@@ -1246,7 +1246,7 @@ var _hmt = _hmt || [];
         <div class="modal-dialog">
             <div class="modal-content rounded-3">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">📤 创建分享</h5>
+                    <h5 class="modal-title">创建分享</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -1272,13 +1272,13 @@ var _hmt = _hmt || [];
                             <input type="number" id="shareMaxViews" class="form-control" value="0" min="0">
                         </div>
                     </div>
-                    <div id="shareResultBox" style="display:none;" class="alert alert-success mb-0">
-                        <strong>分享链接已生成！</strong>
-                        <div class="input-group mt-2">
-                            <input type="text" id="shareLinkInput" class="form-control" readonly>
-                            <button class="btn btn-outline-success" onclick="copyShareLink()">复制</button>
+                        <div id="shareResultBox" style="display:none;" class="alert alert-success mb-0">
+                            <strong>分享链接已生成！</strong>
+                            <div class="input-group mt-2">
+                                <input type="text" id="shareLinkInput" class="form-control" readonly>
+                                <button class="btn btn-outline-secondary" onclick="copyShareLink()">复制</button>
+                            </div>
                         </div>
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>

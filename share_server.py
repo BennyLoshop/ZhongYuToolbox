@@ -263,15 +263,17 @@ def fetch_evaluation(api_base, token, exam_task_id):
     """获取新测评题目 URL 列表"""
     headers = {"Authorization": f"Bearer {token}"}
 
+    resp = requests.get(
+        f'{api_base}/api/services/app/Task/GetExamTaskAsync?id={exam_task_id}',
+        headers=headers, timeout=15
+    )
+    if resp.status_code != 200:
+        raise Exception(f'HTTP {resp.status_code}: url={resp.url}')
     try:
-        resp = requests.get(
-            f'{api_base}/api/services/app/Task/GetExamTaskAsync?id={exam_task_id}',
-            headers=headers, timeout=15
-        )
         exam_data = resp.json()
-        exam = exam_data.get('result', exam_data)
     except Exception:
-        return None
+        raise Exception(f'非JSON响应: url={resp.url} body={resp.text[:200]}')
+    exam = exam_data.get('result', exam_data)
 
     if not isinstance(exam, dict):
         return None
@@ -309,7 +311,12 @@ def fetch_course(api_base, token, course_id, chapter_id=''):
         url = f"{api_base}/SelfStudy/api/Learn/CourseDetail?id={course_id}"
 
     resp = requests.get(url, headers=headers, timeout=30)
-    data = resp.json()
+    if resp.status_code != 200:
+        raise Exception(f'HTTP {resp.status_code}: url={url}')
+    try:
+        data = resp.json()
+    except Exception:
+        raise Exception(f'非JSON响应: url={url} body={resp.text[:200]}')
 
     title = ''
     description = ''
@@ -355,12 +362,83 @@ def fetch_course(api_base, token, course_id, chapter_id=''):
 
 
 def fetch_quora(api_base, token, session_id):
-    """获取随身答会话消息"""
-    headers = {"Authorization": f"Bearer {token}"}
-    url = f"{api_base}/api/services/app/Quora/GetMessages?sessionId={session_id}"
-    resp = requests.get(url, headers=headers, timeout=30)
-    data = resp.json()
-    return data.get('result', data)
+    """获取随身答完整对话内容"""
+    # 参数验证
+    if not session_id:
+        raise Exception('session_id 不能为空')
+    
+    # 确保 session_id 是整数（API 期望整数类型）
+    try:
+        session_id = int(session_id)
+    except (ValueError, TypeError):
+        raise Exception(f'session_id 必须是数字，当前值: {session_id}')
+    
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    url = f"{api_base}/api/services/app/Quora/GetMessages"
+    
+    # 使用大驼峰命名（与index.js保持一致）
+    # 注意：SessionId 必须是整数类型
+    payload = {"SessionId": session_id, "Skip": 0, "Take": 1000}
+    
+    print(f"[fetch_quora] 调用 API: {url}")
+    print(f"[fetch_quora] 参数: {payload}")
+    print(f"[fetch_quora] payload JSON: {json.dumps(payload)}")
+    
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+    
+    print(f"[fetch_quora] 响应状态码: {resp.status_code}")
+    print(f"[fetch_quora] 响应内容: {resp.text[:500]}")
+    
+    if resp.status_code != 200:
+        raise Exception(f'HTTP {resp.status_code}: url={url} body={resp.text[:500]}')
+    
+    try:
+        data = resp.json()
+    except Exception as e:
+        raise Exception(f'非JSON响应: url={url} body={resp.text[:500]}')
+    
+    print(f"[fetch_quora] API返回的原始数据: {json.dumps(data, ensure_ascii=False)[:500]}")
+    
+    # 检查API返回的错误
+    if not data.get('success', True):
+        error_msg = data.get('error', {}).get('message', '未知错误')
+        raise Exception(f'API返回错误: {error_msg}')
+    
+    # 尝试多种可能的数据路径
+    messages = []
+    if isinstance(data.get('result'), list):
+        messages = data['result']
+    elif isinstance(data.get('result'), dict):
+        # 可能 result 里面有 items 或 messages 字段
+        messages = data['result'].get('items', data['result'].get('messages', []))
+    else:
+        # 尝试直接从 data 中获取
+        messages = data.get('items', data.get('messages', []))
+    
+    print(f"[fetch_quora] 提取到的消息数量: {len(messages)}")
+    if len(messages) > 0:
+        print(f"[fetch_quora] 第一条消息示例: {json.dumps(messages[0], ensure_ascii=False)[:200]}")
+    
+    if not isinstance(messages, list):
+        messages = []
+    
+    # 提取消息的关键信息
+    # 根据需求，每个问题只需要 snapShot（快照图片）
+    cleaned = []
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        
+        snap_shot = m.get('snapShot', '')
+        if snap_shot:  # 只保存有快照的消息
+            cleaned.append({
+                'snapShot': snap_shot,
+                'userName': m.get('userName', ''),
+                'sendTime': m.get('sendTime', ''),
+            })
+    
+    print(f"[fetch_quora] 提取后的消息数量: {len(cleaned)}")
+    return {'items': cleaned}
 
 
 def fetch_note_resource(api_base, token, file_id):
@@ -516,6 +594,7 @@ def create_share():
     username = data.get('username', '')
     expires_hours = data.get('expires_hours', 0)
     max_views = data.get('max_views', 0)
+    extra = data.get('extra', None)
 
     if not api_base:
         return jsonify({'success': False, 'error': '缺少 apihost (api_base)'}), 400
@@ -797,12 +876,6 @@ pre.json-view { background: #f8f9fa; border-radius: 8px; padding: 16px; max-heig
             <div class="card-body pic-grid" id="picNoteBody"></div>
         </div>
 
-        <!-- 随身答对话 -->
-        <div class="card mb-3" id="quoraCard" style="display:none;">
-            <div class="card-header fw-bold text-primary">💬 对话记录</div>
-            <div class="card-body" id="quoraBody" style="max-height:600px;overflow:auto;"></div>
-        </div>
-
         <!-- 课程内容 -->
         <div class="card mb-3" id="courseCard" style="display:none;">
             <div class="card-header fw-bold text-primary">📚 课程内容</div>
@@ -964,13 +1037,6 @@ function render(content) {
         hasContent = true;
     }
 
-    // 随身答
-    if (meta.resource_type === 'quora') {
-        document.getElementById('quoraBody').innerHTML = renderQuora(content);
-        document.getElementById('quoraCard').style.display = '';
-        hasContent = true;
-    }
-
     // 课程
     if ((meta.resource_type === 'course' || meta.resource_type === 'chapter') && !hasContent) {
         document.getElementById('courseBody').innerHTML = renderCourse(content);
@@ -1056,23 +1122,6 @@ function prevNotePage() {
 }
 function nextNotePage() {
     if (_notePageIdx < _notePages.length - 1) { _notePageIdx++; renderNoteCurrentPage(); }
-}
-
-function renderQuora(content) {
-    const msgs = content.items || content.messages || content || [];
-    if (!Array.isArray(msgs)) return '<p class="text-muted">无消息记录</p>';
-    let html = '';
-    msgs.forEach(m => {
-        const isUser = m.senderType === 1 || m.role === 'user';
-        const align = isUser ? 'text-end' : 'text-start';
-        const bg = isUser ? 'bg-primary text-white' : 'bg-light';
-        html += `<div class="${align} mb-2">
-            <div class="d-inline-block ${bg} rounded-3 px-3 py-2" style="max-width:80%;">
-                ${m.content || m.text || m.message || JSON.stringify(m)}
-            </div>
-        </div>`;
-    });
-    return html || '<p class="text-muted">无消息记录</p>';
 }
 
 function renderCourse(content) {
