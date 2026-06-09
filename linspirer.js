@@ -432,23 +432,8 @@ window.linspirerDownloadApp = async function (appId, appName) {
         const finalUrl = proxyUrl(downloadUrl);
         console.log("[Linspirer] 下载链接:", finalUrl);
 
-        // 检测移动端（触屏 + 小屏）
-        const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
-            || ('ontouchstart' in window && window.innerWidth < 768);
-
-        if (isMobile) {
-            // 移动端：弹窗显示 URL 让用户复制
-            showDownloadUrlModal(appName, finalUrl);
-        } else {
-            // 桌面端：用 <a> 标签触发浏览器原生下载
-            const a = document.createElement("a");
-            a.href = finalUrl;
-            a.download = appName + ".apk";
-            a.target = "_blank";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
+        // 弹窗显示 URL 让用户复制（兼容所有端）
+        showDownloadUrlModal(appName, finalUrl);
     } catch (e) {
         alert("下载失败: " + e.message);
         console.error("Linspirer download error:", e);
@@ -475,6 +460,8 @@ function showDownloadUrlModal(appName, url) {
             </div>
             <button style="margin-top:12px;width:100%;padding:8px;background:#f0f0f0;border:none;border-radius:6px;font-size:14px;"
                 onclick="document.getElementById('linspirerDownloadUrlModal').remove()">关闭</button>
+            <a href="${url}" download="${appName}.apk" target="_blank"
+                style="display:block;margin-top:8px;text-align:center;color:#0d6efd;font-size:13px;text-decoration:none;">直接下载</a>
         </div>
     `;
     document.body.appendChild(modal);
