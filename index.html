@@ -1272,7 +1272,7 @@ var _hmt = _hmt || [];
 
     <!-- 错题本详情 Modal -->
     <div class="modal fade" id="screenshotModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable modal-xl">
+        <div class="modal-dialog modal-dialog-scrollable modal-fullscreen">
             <div class="modal-content border border-primary rounded-3">
                 <div class="modal-header">
                     <h5 class="modal-title">错题详情</h5>
@@ -1308,6 +1308,26 @@ var _hmt = _hmt || [];
                         <div class="card-header fw-bold text-primary">图片笔记</div>
                         <div class="card-body" id="mistakePicBody"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分享密码输入 Modal -->
+    <div class="modal fade" id="sharePwdModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content rounded-3">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">🔒 需要密码</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">此分享需要密码才能查看</p>
+                    <input type="password" id="sharePwdInput" class="form-control" placeholder="请输入分享密码" onkeydown="if(event.key==='Enter')submitSharePwd()">
+                    <div id="sharePwdError" class="text-danger small mt-1" style="display:none;">密码错误，请重试</div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+                    <button class="btn btn-primary btn-sm" onclick="submitSharePwd()">确认</button>
                 </div>
             </div>
         </div>
@@ -2187,6 +2207,30 @@ var _hmt = _hmt || [];
         };
     })();
     </script>
+
+<!-- 更新日志 Modal -->
+<div class="modal fade" id="updateLogModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content rounded-3">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">更新日志</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body" id="updateLogContent">
+                <!-- 更新日志内容将通过JavaScript动态加载 -->
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="mt-2 text-muted">正在加载更新日志...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="markUpdateAsRead()">我知道了</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 
