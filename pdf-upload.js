@@ -482,7 +482,7 @@ async function saveResourceList(userId, resourceList) {
     var plainData = JSON.stringify(resourceList);
     var data = codeUtilsEncode(plainData);
 
-    var resp = await fetch('http://sxz.api.zykj.org/CloudNotes/api/Resources/AddOrUpdate', {
+    var resp = await fetch(window.API_BASE_URL + '/CloudNotes/api/Resources/AddOrUpdate', {
         method: 'POST',
         headers: {
             'Authorization': 'Bearer ' + token,
@@ -508,7 +508,7 @@ async function saveNote(userId, customFileId, fileName, todayStr) {
     });
     var data = codeUtilsEncode(plainData);
 
-    var resp = await fetch('http://sxz.api.zykj.org/CloudNotes/api/Notes/AddOrUpdate', {
+    var resp = await fetch(window.API_BASE_URL + '/CloudNotes/api/Notes/AddOrUpdate', {
         method: 'POST',
         headers: {
             'Authorization': 'Bearer ' + token,
