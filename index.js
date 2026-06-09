@@ -3214,6 +3214,18 @@ function parseDate(dateStr) {
  */
 async function checkAndShowUpdateLog() {
     try {
+        // 检查用户是否已登录
+        const token = localStorage.getItem('token');
+        if (!token) {
+            return; // 未登录，不弹更新日志
+        }
+        
+        // 检查是否正在查看分享（URL中包含 share 参数）
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('share') || window.location.hash.includes('share=')) {
+            return; // 正在查看分享，不弹更新日志
+        }
+        
         // 从 update.json 获取更新日志
         const response = await fetch('update.json?t=' + Date.now());
         if (!response.ok) {
@@ -3306,6 +3318,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // 检查用户是否已登录
     const token = localStorage.getItem('token');
     if (token) {
+        // 检查是否正在查看分享（URL中包含 share 参数）
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('share') || window.location.hash.includes('share=')) {
+            return; // 正在查看分享，不弹更新日志
+        }
+        
         // 延迟执行，确保其他初始化完成
         setTimeout(() => {
             checkAndShowUpdateLog();
