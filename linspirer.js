@@ -414,7 +414,7 @@ window.linspirerViewApp = async function (appId) {
     }
 };
 
-// 下载应用（download.php 会 302 重定向到实际文件，用 <a> 标签让浏览器原生处理）
+// 下载应用（download.php 会 302 重定向到实际文件）
 window.linspirerDownloadApp = async function (appId, appName) {
     const s = linspirerState;
     if (!s.loggedIn) return;
@@ -429,24 +429,73 @@ window.linspirerDownloadApp = async function (appId, appName) {
             return;
         }
 
-        // 代理下载 URL
         const finalUrl = proxyUrl(downloadUrl);
-
         console.log("[Linspirer] 下载链接:", finalUrl);
 
-        // 用 <a> 标签触发浏览器原生下载，浏览器自动跟随 302 重定向，无 CORS 限制
-        const a = document.createElement("a");
-        a.href = finalUrl;
-        a.download = appName + ".apk";
-        a.target = "_blank";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // 检测移动端（触屏 + 小屏）
+        const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
+            || ('ontouchstart' in window && window.innerWidth < 768);
+
+        if (isMobile) {
+            // 移动端：弹窗显示 URL 让用户复制
+            showDownloadUrlModal(appName, finalUrl);
+        } else {
+            // 桌面端：用 <a> 标签触发浏览器原生下载
+            const a = document.createElement("a");
+            a.href = finalUrl;
+            a.download = appName + ".apk";
+            a.target = "_blank";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
     } catch (e) {
         alert("下载失败: " + e.message);
         console.error("Linspirer download error:", e);
     }
 };
+
+// 移动端下载 URL 弹窗
+function showDownloadUrlModal(appName, url) {
+    const existing = document.getElementById("linspirerDownloadUrlModal");
+    if (existing) existing.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "linspirerDownloadUrlModal";
+    modal.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;";
+    modal.innerHTML = `
+        <div style="background:#fff;border-radius:12px;padding:24px;max-width:90%;width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+            <h5 style="margin-bottom:4px;">${appName}</h5>
+            <p style="color:#666;font-size:13px;margin-bottom:12px;">复制以下链接到浏览器打开下载</p>
+            <div style="display:flex;gap:8px;">
+                <textarea id="linspirerCopyInput" readonly rows="3"
+                    style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:12px;word-break:break-all;resize:none;">${url}</textarea>
+                <button id="linspirerCopyBtn"
+                    style="padding:8px 16px;background:#0d6efd;color:#fff;border:none;border-radius:6px;white-space:nowrap;font-size:14px;align-self:flex-start;">复制</button>
+            </div>
+            <button style="margin-top:12px;width:100%;padding:8px;background:#f0f0f0;border:none;border-radius:6px;font-size:14px;"
+                onclick="document.getElementById('linspirerDownloadUrlModal').remove()">关闭</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById("linspirerCopyBtn").onclick = function () {
+        const input = document.getElementById("linspirerCopyInput");
+        navigator.clipboard.writeText(input.value).then(() => {
+            this.textContent = "已复制!";
+            this.style.background = "#198754";
+        }).catch(() => {
+            input.select();
+            document.execCommand("copy");
+            this.textContent = "已复制!";
+            this.style.background = "#198754";
+        });
+    };
+
+    modal.onclick = function (e) {
+        if (e.target === modal) modal.remove();
+    };
+}
 
 // 密码计算
 window.linspirerCalcPwd = async function () {
