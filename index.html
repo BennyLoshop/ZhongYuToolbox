@@ -242,6 +242,7 @@ var _hmt = _hmt || [];
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#question"
                         onclick="quoraInit()">随身答</a></li>
 
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#linspirer" onclick="linspirerInit()">领创</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#apps">下载应用</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#lesson2" onclick="show_lesson()"
                         id="lesson-tab">优客畅学</a></li>
@@ -740,6 +741,114 @@ var _hmt = _hmt || [];
                 </div>
             </div>
         </div>
+        <!-- ==================== 领创 (Linspirer) Tab ==================== -->
+        <div class="tab-pane fade" id="linspirer">
+            <div class="container mt-5">
+                <div class="list-group mt-3" style="background:rgba(255,255,255,0.8)">
+                    <div class="container mb-3">
+                        <br />
+                        <h1 class="text-primary">领创工具</h1>
+                        <p class="text-muted" id="linspirer_welcome" style="display:none;"></p>
+
+                        <!-- 子标签切换 -->
+                        <ul class="nav nav-tabs mt-3" id="linspirerTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="linspirer-apps-tab" data-bs-toggle="tab" data-bs-target="#linspirerApps" type="button" role="tab">应用管理</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="linspirer-pwd-tab" data-bs-toggle="tab" data-bs-target="#linspirerPwd" type="button" role="tab">密码计算器</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content mt-3">
+                            <!-- 应用管理子标签 -->
+                            <div class="tab-pane fade show active" id="linspirerApps" role="tabpanel">
+                                <!-- 登录表单 -->
+                                <div class="card mb-3">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0">设备绑定</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-2">
+                                            <div class="col-md-4">
+                                                <label class="form-label">设备号 (swdid)</label>
+                                                <input type="text" class="form-control" id="linspirer_swdid" placeholder="输入设备号">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">用户名</label>
+                                                <input type="text" class="form-control" id="linspirer_account" placeholder="自动填充中育用户名">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">设备型号</label>
+                                                <input type="text" class="form-control" id="linspirer_model" placeholder="如 BTKZ-W00">
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 d-flex align-items-center gap-2">
+                                            <button class="btn btn-primary" id="linspirerLoginBtn" onclick="linspirerLogin()">登录并获取应用</button>
+                                            <span id="linspirerStatus"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 应用列表 -->
+                                <div id="linspirerResultArea" style="display:none;">
+                                    <h4 class="mb-3">应用列表</h4>
+                                    <div id="linspirerAppList"></div>
+                                </div>
+                            </div>
+
+                            <!-- 密码计算器子标签 -->
+                            <div class="tab-pane fade" id="linspirerPwd" role="tabpanel">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">管理员密码计算器</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted small">每天动态变化的管理员密码，基于设备号+日期+学生ID的MD5计算</p>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label">设备号</label>
+                                                <input type="text" class="form-control" id="linspirer_pwd_swdid" placeholder="留空则使用已绑定的设备号">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">用户名（可选）</label>
+                                                <input type="text" class="form-control" id="linspirer_pwd_account" placeholder="需要联网获取学生ID">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">设备型号（可选）</label>
+                                                <input type="text" class="form-control" id="linspirer_pwd_model" placeholder="如 BTKZ-W00">
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-success" id="linspirerPwdBtn" onclick="linspirerCalcPwd()">计算密码</button>
+                                            <button class="btn btn-outline-success" onclick="linspirerQuickCalcPwd()">快捷计算（使用已登录信息）</button>
+                                        </div>
+                                        <div id="linspirerPwdResult" class="mt-3"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 领创应用详情 Modal -->
+        <div class="modal fade" id="linspirerDetailModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">应用详情</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                    </div>
+                    <div class="modal-body" id="linspirerDetailBody"></div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="tab-pane fade" id="apps">
             <div class="container mt-5">
 
@@ -1388,6 +1497,7 @@ var _hmt = _hmt || [];
     <script src="DPlayer.min.js"></script>
     <script src="index.js"></script>
     <script src="pdf-upload.js"></script>
+    <script src="linspirer.js"></script>
 
     <script>
         $("form .dropdown-item").click(function () {
