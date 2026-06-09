@@ -287,13 +287,27 @@ async function uploadPdfAsNote() {
 
         // 步骤3：上传模板文件到OSS
         updatePdfProgress(50, '正在上传模板文件...');
+        
+        // 先生成 ossPageHash（用于模板文件路径）
         var ossPageHash = generatePageHash();
         var uuid = 'a888b5fb-e65d-4611-a3af-1f80a0fb6ced';
+        
+        // 先确保 OSS 基础 URL 可用（通过实际上传一个测试文件来获取）
+        if (!window.ossBaseUrl) {
+            updatePdfProgress(52, '正在获取OSS配置...');
+            // 上传第一个模板文件，从返回的文件URL中提取OSS基础URL
+            var testFileUrl = await uploadToOss(templates['page_router.bin'], userId, customFileId, ossPageHash + '/page_router.bin');
+            // 从文件URL中提取OSS基础URL（即域名部分+斜杠）
+            // 文件URL格式：https://bucket.region.aliyuncs.com/note_v2/res/userId/date/nonce/filename
+            // 我们需要提取：https://bucket.region.aliyuncs.com/
+            var urlObj = new URL(testFileUrl);
+            window.ossBaseUrl = urlObj.protocol + '//' + urlObj.host + '/';
+            
+            // 从templates中删除已上传的page_router.bin，避免重复上传
+            delete templates['page_router.bin'];
+        }
 
-        // 上传 page_router.bin
-        await uploadToOss(templates['page_router.bin'], userId, customFileId, ossPageHash + '/page_router.bin');
-
-        // 上传UUID目录下的模板文件
+        // 上传UUID目录下的模板文件（已排除page_router.bin）
         var templateKeys = Object.keys(templates);
         for (var k = 0; k < templateKeys.length; k++) {
             var f = templateKeys[k];
@@ -306,7 +320,8 @@ async function uploadPdfAsNote() {
         updatePdfProgress(65, '正在上传图片...');
         var resourceList = [];
         // ossBase 不包含 ossPageHash，模板文件和图片文件的路径不同
-        var ossBase = 'http://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/note_v2/res/' + userId + '/' + todayStr + '/' + customFileId;
+        // 使用前面已获取的 window.ossBaseUrl
+        var ossBase = window.ossBaseUrl + 'note_v2/res/' + userId + '/' + todayStr + '/' + customFileId;
 
         for (var pageIndex = 0; pageIndex < pdfImages.length; pageIndex++) {
             var pageHash = generatePageHash();
