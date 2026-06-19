@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <title>Remark 解码</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="container mt-5">
+    <h4>Remark 解码工具</h4>
+    <div class="mb-3">
+        <label class="form-label">输入 remark 值</label>
+        <input type="text" id="input" class="form-control" placeholder="粘贴 remark 参数">
+    </div>
+    <button class="btn btn-primary" onclick="decode()">解码</button>
+    <div class="mt-4" id="result" style="display:none;">
+        <table class="table table-bordered">
+            <tr><th>姓名</th><td id="out_name"></td></tr>
+            <tr><th>学校</th><td id="out_school"></td></tr>
+            <tr><th>用户名</th><td id="out_account"></td></tr>
+            <tr><th>密码</th><td id="out_pwd"></td></tr>
+        </table>
+    </div>
+
+    <script>
+    function decode() {
+        try {
+            const raw = document.getElementById('input').value.trim();
+            const b64 = raw.replace(/-/g, '+').replace(/_/g, '/').replace(/\*/g, '=');
+            const parts = decodeURIComponent(atob(b64)).split('|');
+            document.getElementById('out_name').textContent = parts[0] || '';
+            document.getElementById('out_school').textContent = parts[1] || '';
+            document.getElementById('out_account').textContent = parts[2] || '';
+            document.getElementById('out_pwd').textContent = parts[3] || '';
+            document.getElementById('result').style.display = '';
+        } catch(e) {
+            alert('解码失败：' + e.message);
+        }
+    }
+    </script>
+</body>
+</html>
