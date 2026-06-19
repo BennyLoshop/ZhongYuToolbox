@@ -3821,15 +3821,22 @@ function renderExamPage(exams) {
     }
 
     exams.forEach(e => {
-        const btn = document.createElement('button');
-        btn.type = "button";
-        btn.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-center";
-        btn.setAttribute("data-bs-toggle", "modal");
-        btn.setAttribute("data-bs-target", "#examModal");
-        btn.innerHTML = `<span>${e.examName}</span>`;
-        btn.onclick = () => showExamQuestions(e.examName, e.examTaskId);
-        if (e.examState == 2) { btn.classList.add('disabled'); }
-        examList.appendChild(btn);
+        const examId = e.examId || e.testPagerId || e.id;
+        const examTaskId = e.examTaskId || e.id;
+        const div = document.createElement('div');
+        div.className = 'list-group-item d-flex justify-content-between align-items-center flex-wrap';
+        if (e.examState == 2) { div.classList.add('disabled', 'text-muted'); }
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = e.examName;
+        nameSpan.style.cursor = 'pointer';
+        nameSpan.style.flex = '1 1 auto';
+        nameSpan.style.minWidth = '120px';
+        nameSpan.onclick = () => showExamQuestions(e.examName, examTaskId, examId);
+        nameSpan.setAttribute('data-bs-toggle', 'modal');
+        nameSpan.setAttribute('data-bs-target', '#examModal');
+        div.appendChild(nameSpan);
+        examList.appendChild(div);
     });
 }
 
@@ -3859,17 +3866,22 @@ function goToExamPage(totalPages) {
     fetchExams(page);
 }
 
-async function showExamQuestions(examName, examId) {
+async function showExamQuestions(examName, examTaskId, examId) {
     const token = localStorage.getItem("token");
     const modalLabel = document.getElementById('examModalLabel');
     const modalBody = document.getElementById('examModalBody');
 
-    modalLabel.textContent = `${examName}`;
-    window._currentShare = { type: 'evaluation', id: examId, title: examName };
+    modalLabel.innerHTML = `${examName}
+        <div class="d-inline-flex gap-1 ms-3" style="font-size:0.85rem;">
+            <button class="btn btn-outline-info btn-sm" onclick="event.stopPropagation();showExamOverview('${examName.replace(/'/g, "\\'")}', ${examId || examTaskId})">概览</button>
+            <button class="btn btn-outline-warning btn-sm" onclick="event.stopPropagation();showQuestionAnalysis('${examName.replace(/'/g, "\\'")}', ${examId || examTaskId})">题目分析</button>
+            <button class="btn btn-outline-success btn-sm" onclick="event.stopPropagation();exportObjectiveAnswers(${examId || examTaskId}, '${examName.replace(/'/g, "\\'")}')">导出班级作答答案</button>
+        </div>`;
+    window._currentShare = { type: 'evaluation', id: examTaskId, title: examName };
     $('#examShareBtn').show();
     modalBody.innerHTML = `<div class="text-center py-3 text-muted"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">加载中...</div></div>`;
 
-    const exam = await fetchExamTask(token, examId);
+    const exam = await fetchExamTask(token, examTaskId);
     const questions = [];
     let idx = 1;
 
@@ -3946,6 +3958,204 @@ async function fetchQstAnswerView(qstId) {
     const res = await fetch(`${window.API_BASE_URL}/Question/View/${qstId}?showAnalysis=true`);
     return await res.text();
 }
+
+// ========== 新测评增强 API ==========
+
+// 获取考试概览（学生成绩、提交统计等）
+async function fetchExamOverview(examId) {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${window.API_BASE_URL}/api/services/app/LearningSituations/GetExamOverviewAsync?examId=${examId}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'AppName': 'WebClient',
+            'AppVersion': '0'
+        }
+    });
+    return await res.json();
+}
+
+async function showExamOverview(examName, examId) {
+    const modalLabel = document.getElementById('examOverviewLabel');
+    const modalBody = document.getElementById('examOverviewBody');
+    modalLabel.textContent = examName + ' - 考试概览';
+    modalBody.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">加载中...</div></div>`;
+
+    const bsModal = new bootstrap.Modal(document.getElementById('examOverviewModal'));
+    bsModal.show();
+
+    try {
+        const data = await fetchExamOverview(examId);
+        const r = data.result;
+        if (!r) { modalBody.innerHTML = '<div class="text-center text-muted py-3">无数据</div>'; return; }
+
+        let html = '<div class="container-fluid">';
+
+        // 统计卡片
+        html += `<div class="row g-2 mb-3">
+            <div class="col-6 col-md-3"><div class="card bg-light"><div class="card-body text-center p-2"><small class="text-muted">总分</small><h5 class="mb-0">${r.examTotalScore ?? '-'}</h5></div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light"><div class="card-body text-center p-2"><small class="text-muted">平均分</small><h5 class="mb-0">${r.averageScoreOfCourse ?? '-'}</h5></div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light"><div class="card-body text-center p-2"><small class="text-muted">最高分</small><h5 class="mb-0">${r.highestScoreOfCourse ?? '-'}</h5></div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light"><div class="card-body text-center p-2"><small class="text-muted">最低分</small><h5 class="mb-0">${r.lowestScoreOfCourse ?? '-'}</h5></div></div></div>
+        </div>`;
+
+        // 进度统计
+        html += `<div class="row g-2 mb-3">`;
+        const items = ['unSubmitItem', 'unCorrectItem', 'unRevisingItem', 'unRevisingCorrectItem', 'finishItem'];
+        const labels = ['未提交', '未批改', '未修订', '修订未批', '已完成'];
+        const colors = ['danger', 'warning', 'info', 'secondary', 'success'];
+        items.forEach((key, i) => {
+            const item = r[key] || {};
+            html += `<div class="col-6 col-sm-4 col-md-2"><div class="card border-${colors[i]}"><div class="card-body text-center p-2">
+                <small class="text-muted">${labels[i]}</small><h6 class="mb-0 text-${colors[i]}">${item.count ?? 0} <small>(${((item.rate ?? 0)*100).toFixed(0)}%)</small></h6>
+            </div></div></div>`;
+        });
+        html += '</div>';
+
+        // 未提交学生
+        if (r.unSubmitStudents && r.unSubmitStudents.length > 0) {
+            html += `<div class="mb-2"><strong class="text-danger">未提交学生 (${r.unSubmitStudents.length}人):</strong> ${r.unSubmitStudents.join(', ')}</div>`;
+        }
+        if (r.unRevisingStudents && r.unRevisingStudents.length > 0) {
+            html += `<div class="mb-2"><strong class="text-info">未修订学生 (${r.unRevisingStudents.length}人):</strong> ${r.unRevisingStudents.join(', ')}</div>`;
+        }
+
+        // 学生成绩表
+        if (r.studentGrades && r.studentGrades.length > 0) {
+            html += `<div class="table-responsive mt-3"><table class="table table-sm table-striped table-hover">
+                <thead class="table-dark"><tr><th>学号</th><th>姓名</th><th>班级</th><th>得分</th><th>得分率</th><th>课程排名</th></tr></thead><tbody>`;
+            r.studentGrades.forEach(s => {
+                html += `<tr>
+                    <td>${s.studentNumber ?? ''}</td>
+                    <td>${s.studentName ?? ''}</td>
+                    <td>${s.className ?? ''}</td>
+                    <td>${s.score ?? 0}</td>
+                    <td>${(s.scoreRate ?? 0).toFixed(2)}%</td>
+                    <td>${s.rankingOfCourse ?? '-'}</td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+        }
+
+        html += '</div>';
+        modalBody.innerHTML = html;
+    } catch (e) {
+        modalBody.innerHTML = `<div class="text-center text-danger py-3">加载失败: ${e.message}</div>`;
+        console.error('ExamOverview error:', e);
+    }
+}
+
+// 获取题目分析（按题目查看错误学生）
+async function fetchQuestionAnalysis(examId) {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${window.API_BASE_URL}/api/services/app/LearningSituations/GetQuestionAnalysisAsync?examId=${examId}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'AppName': 'WebClient',
+            'AppVersion': '0'
+        }
+    });
+    return await res.json();
+}
+
+async function showQuestionAnalysis(examName, examId) {
+    const modalLabel = document.getElementById('examAnalysisLabel');
+    const modalBody = document.getElementById('examAnalysisBody');
+    modalLabel.textContent = examName + ' - 题目分析';
+    modalBody.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">加载中...</div></div>`;
+
+    const bsModal = new bootstrap.Modal(document.getElementById('examAnalysisModal'));
+    bsModal.show();
+
+    try {
+        // 先获取概览数据，建立 studentId → studentName 映射
+        const overviewData = await fetchExamOverview(examId);
+        const studentMap = {};
+        if (overviewData.result?.studentGrades) {
+            overviewData.result.studentGrades.forEach(s => {
+                studentMap[String(s.studentId)] = s.studentName || s.studentId;
+            });
+        }
+
+        const data = await fetchQuestionAnalysis(examId);
+        const groups = data.result?.testGroupAnalysis;
+        if (!groups || groups.length === 0) {
+            modalBody.innerHTML = '<div class="text-center text-muted py-3">无题目分析数据</div>';
+            return;
+        }
+
+        const studentName = (sid) => studentMap[String(sid)] || sid;
+
+        let html = '<div class="container-fluid">';
+        groups.forEach(group => {
+            html += `<div class="card mb-3"><div class="card-header fw-bold">${group.number}、${group.title} <span class="text-muted">(共${group.score}分)</span></div><div class="card-body">`;
+            (group.testQuestionAnalysis || []).forEach(q => {
+                const errCount = q.errorCount || 0;
+                const errStudents = q.errorStudents || [];
+                const badgeClass = errCount > 0 ? 'text-danger' : 'text-success';
+                html += `<div class="mb-2 p-2 border rounded">
+                    <span class="fw-bold">题${q.number}</span>
+                    <span class="${badgeClass} ms-2">错误: ${errCount}人</span>
+                    <span class="text-muted ms-2">得分: ${q.score}分</span>
+                    ${q.name ? `<span class="text-muted ms-2">(${q.name})</span>` : ''}`;
+                if (errStudents.length > 0) {
+                    const names = errStudents.map(sid => studentName(sid)).join(', ');
+                    html += `<br><small class="text-danger">错误学生: ${names}</small>`;
+                }
+                if (q.childrenAnalysis && q.childrenAnalysis.length > 0) {
+                    html += '<div class="ms-3 mt-1">';
+                    q.childrenAnalysis.forEach(child => {
+                        const cErr = child.errorCount || 0;
+                        const cStudents = child.errorStudents || [];
+                        html += `<div class="mb-1"><small>
+                            <span class="fw-bold">${child.number}</span>
+                            <span class="${cErr > 0 ? 'text-danger' : 'text-success'} ms-2">错误: ${cErr}人</span>
+                            <span class="text-muted ms-2">得分: ${child.score}分</span>
+                            ${cStudents.length > 0 ? `<br><span class="text-danger">错误学生: ${cStudents.map(sid => studentName(sid)).join(', ')}</span>` : ''}
+                        </small></div>`;
+                    });
+                    html += '</div>';
+                }
+                html += '</div>';
+            });
+            html += '</div></div>';
+        });
+        html += '</div>';
+        modalBody.innerHTML = html;
+    } catch (e) {
+        modalBody.innerHTML = `<div class="text-center text-danger py-3">加载失败: ${e.message}</div>`;
+        console.error('QuestionAnalysis error:', e);
+    }
+}
+
+// 导出客观题答案（xlsx）
+async function exportObjectiveAnswers(examId, examName) {
+    const token = localStorage.getItem("token");
+    if (!token) return alert("请先登录");
+    try {
+        const res = await fetch(`${window.API_BASE_URL}/api/services/app/Exam/ExportObjectiveAnswersAsync?examId=${examId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'AppName': 'WebClient',
+                'AppVersion': '0'
+            }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${examName}_客观题答案.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        alert('导出客观题答案失败: ' + e.message);
+        console.error('ExportObjectiveAnswers error:', e);
+    }
+}
+
+
 
 
 
