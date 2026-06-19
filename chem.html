@@ -19,6 +19,31 @@
 </head>
 
 <body>
+    <script>
+document.addEventListener('DOMContentLoaded', function () {
+    var modal = document.createElement('div');
+    modal.innerHTML = `
+        <div class="modal fade" id="deprecatedModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title">停止维护通知</h5>
+                    </div>
+                    <div class="modal-body">
+                        化竞版中育Toolbox已停止维护，访问最新版请使用正常版本。<br><br>
+                        网址：<a href="https://zytb.loshop.com.cn" target="_blank">https://zytb.loshop.com.cn</a>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="window.location.href='https://zytb.loshop.com.cn'">跳转</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    new bootstrap.Modal(document.getElementById('deprecatedModal')).show();
+});
+</script>
     <div class="alert alert-dismissible alert-light" id="announcement_block">
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         <div id="announcement">
