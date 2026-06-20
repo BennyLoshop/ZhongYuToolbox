@@ -1,7 +1,7 @@
 (() => {
     window.API_BASE_URL = localStorage.getItem("apiBaseUrl") || "https://zyapi.loshop.com.cn";
     window.API_BASE_BASE_URL = localStorage.getItem("apiBaseOrigin") || "https://zyapi.loshop.com.cn";
-    window.proxyBaseUrl = localStorage.getItem("apiBaseUrl") ? localStorage.getItem("apiBaseUrl").replace("//", "//picAgent.") : "https://zyapi.loshop.com.cn/picAgent/";
+    window.proxyBaseUrl = localStorage.getItem("apiBaseUrl") ? localStorage.getItem("apiBaseUrl").replace("//", "//picAgent.") : "https://zytbdownloadagent.loshop.com.cn/download/";
     window.SHARE_SERVER = localStorage.getItem("shareServer") || "https://zytbshareapi.loshop.com.cn";
     window.proxyUrl = (url) => {
         const base = window.proxyBaseUrl;
@@ -454,7 +454,7 @@
 
 
 async function detectLocalProxy() {
-    let proxyBaseUrl = "https://zyapi.loshop.com.cn/picAgent/";
+    let proxyBaseUrl = "https://zytbdownloadagent.loshop.com.cn/download/";
     let localOk = false;
     try {
         let resp = await fetch("http://127.0.0.1:5005/proxy/ping", { method: "GET", mode: "cors" });
