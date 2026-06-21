@@ -20,7 +20,157 @@
     <script type="text/javascript" src="sweetalert-dev.js"></script>
 </head>
 
-<body>
+<body><script>
+(function() {
+    const DB_NAME = 'ZhongyuSurveyStorage';
+    const STORE_NAME = 'survey_state';
+    const DB_VERSION = 1;
+
+    // 初始化并连接IndexedDB
+    function getDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = function(e) {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
+            };
+            request.onsuccess = function(e) {
+                resolve(e.target.result);
+            };
+            request.onerror = function(e) {
+                reject(e.target.error);
+            };
+        });
+    }
+
+    // 获取IndexedDB中存储的Key-Value
+    function getKV(key) {
+        return getDB().then(db => {
+            return new Promise((resolve) => {
+                const transaction = db.transaction(STORE_NAME, 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(key);
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+            });
+        });
+    }
+
+    // 写入IndexedDB数据
+    function setKV(key, value) {
+        return getDB().then(db => {
+            return new Promise((resolve) => {
+                const transaction = db.transaction(STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put(value, key);
+                request.onsuccess = function() {
+                    resolve();
+                };
+            });
+        });
+    }
+
+    // 动态向页面插入Bootstrap Modal并显示
+    function injectAndShowModal(realName) {
+        if (document.getElementById('surveyModal')) return;
+
+        let modalHtml = `
+        <div class="modal fade" id="surveyModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content" style="border-radius: 16px; overflow: hidden; border: 1px solid #D9BFB2;">
+                    
+                    <div id="survey-inquiry-view">
+                        <div class="modal-header" style="background-color: #F5EDE7; border-bottom: 1px solid #D9BFB2;">
+                            <h5 class="modal-title" style="color: #221A15; font-weight: bold;">问卷调查邀请</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" style="padding: 24px; color: #221A15;">
+                            <p style="font-size: 15px; line-height: 1.6;">您好，抽空帮我们填写一份中育ToolBox使用体验问卷可以吗？您的反馈对Loshop非常重要，将帮助我们持续改进工具体验。</p>
+                        </div>
+                        <div class="modal-footer" style="background-color: #FFF8F5; border-top: 1px solid #D9BFB2; justify-content: flex-end; gap: 8px;">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-survey-never" style="border-radius: 20px;">不再提示</button>
+                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" style="border-radius: 20px;">暂时不了</button>
+                            <button type="button" class="btn btn-sm btn-primary" id="btn-survey-go" style="background-color: #E65100; border-color: #E65100; border-radius: 20px;">好的，前往填写</button>
+                        </div>
+                    </div>
+
+                    <div id="survey-iframe-view" style="display: none;">
+                        <div class="modal-header" style="background-color: #F5EDE7; border-bottom: 1px solid #D9BFB2;">
+                            <h5 class="modal-title" style="color: #221A15; font-weight: bold;">中育ToolBox 用户调查</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" style="padding: 0; height: 650px;">
+                            <iframe id="survey-iframe" style="width:100%; height:100%; border:none;"></iframe>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>`;
+        
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = modalHtml;
+        document.body.appendChild(wrapper.firstElementChild);
+
+        const modalEl = document.getElementById('surveyModal');
+        const modalInstance = new bootstrap.Modal(modalEl);
+
+        // 按钮事件绑定：不再提示
+        document.getElementById('btn-survey-never').addEventListener('click', async () => {
+            await setKV('status', 'never_show');
+            modalInstance.hide();
+        });
+
+        // 按钮事件绑定：同意填写
+        document.getElementById('btn-survey-go').addEventListener('click', () => {
+            const iframe = document.getElementById('survey-iframe');
+            iframe.src = `https://zytbcert.loshop.com.cn/wj.html?realName=${encodeURIComponent(realName)}`;
+            document.getElementById('survey-inquiry-view').style.display = 'none';
+            document.getElementById('survey-iframe-view').style.display = 'block';
+        });
+
+        modalInstance.show();
+    }
+
+    // 主业务逻辑入口
+    async function initSurveyLogic() {
+        const status = await getKV('status');
+        // 如果IndexedDB中记录了已回答(answered)或永久拒绝(never_show)，则跳过任何弹窗操作
+        if (status === 'answered' || status === 'never_show') {
+            return;
+        }
+
+        // 提取本地存储中的realName
+        const realName = localStorage.getItem('realName') || '未录入';
+        
+        // 每次加载且满足未填状态时，直接启动并装载询问Modal
+        injectAndShowModal(realName);
+    }
+
+    // 监听iframe内部发送的完成通知
+    window.addEventListener('message', async function(event) {
+        if (event.data === 'survey_completed') {
+            await setKV('status', 'answered');
+            const modalEl = document.getElementById('surveyModal');
+            if (modalEl) {
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            }
+        }
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSurveyLogic);
+    } else {
+        initSurveyLogic();
+    }
+})();
+</script>
     <script>
 var _hmt = _hmt || [];
 (function() {

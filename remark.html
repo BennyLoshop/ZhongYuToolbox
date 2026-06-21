@@ -1,41 +1,738 @@
+
 <!DOCTYPE html>
-<html lang="zh-cn">
+<html lang="zh-CN">
 <head>
-    <meta charset="utf-8">
-    <title>Remark 解码</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 用户增长动态交互看板</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <!-- Three.js (r128) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls for camera manipulation -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Tween.js for smooth animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            background-color: #0B0E14;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        /* 玻璃拟态卡片 */
+        .glass-panel {
+            background: rgba(15, 20, 30, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
 </head>
-<body class="container mt-5">
-    <h4>Remark 解码工具</h4>
-    <div class="mb-3">
-        <label class="form-label">输入 remark 值</label>
-        <input type="text" id="input" class="form-control" placeholder="粘贴 remark 参数">
-    </div>
-    <button class="btn btn-primary" onclick="decode()">解码</button>
-    <div class="mt-4" id="result" style="display:none;">
-        <table class="table table-bordered">
-            <tr><th>姓名</th><td id="out_name"></td></tr>
-            <tr><th>学校</th><td id="out_school"></td></tr>
-            <tr><th>用户名</th><td id="out_account"></td></tr>
-            <tr><th>密码</th><td id="out_pwd"></td></tr>
-        </table>
+<body class="text-slate-100 select-none">
+
+    <!-- 3D 渲染画布容器 -->
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+    <!-- 顶栏：轻量化 Material You 风格标题 -->
+    <header class="absolute top-0 left-0 right-0 z-10 px-6 py-4 flex items-center justify-between pointer-events-none">
+        <div class="flex items-center gap-3 pointer-events-auto">
+            <span class="material-symbols-outlined text-3xl p-2 bg-blue-500/20 text-blue-400 rounded-2xl">insights</span>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">用户总量增长 3D 时空光轨</h1>
+                <p class="text-xs text-slate-400">基于《用户记录.pdf》· 2025/07 - 2026/06 累计用户演变</p>
+            </div>
+        </div>
+        <div class="pointer-events-auto flex items-center gap-2 bg-[#0F141E]/80 px-4 py-2 rounded-full border border-white/5 text-xs text-slate-300">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            实时三维物理场景
+        </div>
+    </header>
+
+    <!-- 右侧：全局数据指标透视卡片 -->
+    <section class="absolute top-24 right-6 z-10 w-80 glass-panel p-5 rounded-3xl shadow-2xl flex flex-col gap-4 pointer-events-auto">
+        <div class="border-b border-white/5 pb-3">
+            <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">当前概化数据</span>
+            <h2 class="text-lg font-bold mt-1">数据沉淀中心</h2>
+        </div>
+
+        <!-- 累计用户量 -->
+        <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+            <span class="text-xs text-slate-400 block">累计注册总量</span>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span id="total-users" class="text-3xl font-bold tracking-tight text-blue-300">414</span>
+                <span class="text-xs text-emerald-400 font-semibold flex items-center gap-0.5">
+                    <span class="material-symbols-outlined text-sm">trending_up</span>100%
+                </span>
+            </div>
+        </div>
+
+        <!-- 时间轴控制面板 -->
+        <div>
+            <h3 class="text-xs text-slate-400 font-semibold mb-2">交互式动画控制</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="playGrowthAnimation()" class="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600 hover:bg-blue-500 transition-colors text-xs font-bold rounded-xl shadow-lg shadow-blue-600/20">
+                    <span class="material-symbols-outlined text-sm">play_arrow</span>
+                    动态重播
+                </button>
+                <button onclick="resetCamera()" class="flex items-center justify-center gap-2 py-2 px-3 bg-white/5 hover:bg-white/10 transition-colors text-xs font-semibold rounded-xl border border-white/10">
+                    <span class="material-symbols-outlined text-sm">filter_center_focus</span>
+                    重置视角
+                </button>
+            </div>
+        </div>
+
+        <!-- 3D 交互提示说明 -->
+        <div class="text-[11px] text-slate-400 flex items-center gap-2 mt-2 bg-blue-500/5 p-3 rounded-xl border border-blue-500/10">
+            <span class="material-symbols-outlined text-base text-blue-400">info</span>
+            <span>可用鼠标左键拖拽旋转空间，右键平移，滚轮缩放，双击特定周跳转。</span>
+        </div>
+    </section>
+
+    <!-- 左下角：故事叙事与分步讲解看板 -->
+    <section class="absolute bottom-6 left-6 z-10 w-[22rem] glass-panel p-5 rounded-3xl shadow-2xl pointer-events-auto">
+        <div class="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-blue-400">explore</span>
+                <h3 class="font-bold text-sm">用户成长阶段剖析</h3>
+            </div>
+            <span id="story-progress" class="text-[10px] bg-blue-500/20 text-blue-300 px-2.5 py-0.5 rounded-full font-bold">1 / 4</span>
+        </div>
+
+        <div class="min-h-[100px] flex flex-col justify-between">
+            <div>
+                <h4 id="story-title" class="text-sm font-bold text-slate-200">正在初始化数据...</h4>
+                <p id="story-range" class="text-[11px] text-blue-400 font-medium mt-1">时间周期: --</p>
+                <p id="story-desc" class="text-xs text-slate-400 mt-2.5 leading-relaxed">
+                    加载中，正在构建增长轨迹...
+                </p>
+            </div>
+
+            <!-- 控制按钮 -->
+            <div class="flex items-center justify-between mt-5 pt-3 border-t border-white/5">
+                <button onclick="prevStory()" class="p-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none" id="btn-prev">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <div class="flex gap-1.5" id="story-dots">
+                    <!-- 动态生成小圆点 -->
+                </div>
+                <button onclick="nextStory()" class="py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md transition-all" id="btn-next">
+                    下一阶段
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 中央底部：3D 时间坐标轴提示器 -->
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none flex flex-col items-center gap-1.5">
+        <div class="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-1.5 rounded-full text-xs text-slate-300 flex items-center gap-2 shadow-lg">
+            <span>2025年7月 (起点)</span>
+            <span class="material-symbols-outlined text-blue-400">trending_flat</span>
+            <span>2026年6月 (最新周)</span>
+        </div>
+        <span class="text-[10px] text-slate-500 tracking-wider">空间 X 轴代表时间维度 · Y 轴代表累计人数</span>
     </div>
 
+    <!-- 3D 场景控制脚本 -->
     <script>
-    function decode() {
-        try {
-            const raw = document.getElementById('input').value.trim();
-            const b64 = raw.replace(/-/g, '+').replace(/_/g, '/').replace(/\*/g, '=');
-            const parts = decodeURIComponent(atob(b64)).split('|');
-            document.getElementById('out_name').textContent = parts[0] || '';
-            document.getElementById('out_school').textContent = parts[1] || '';
-            document.getElementById('out_account').textContent = parts[2] || '';
-            document.getElementById('out_pwd').textContent = parts[3] || '';
-            document.getElementById('result').style.display = '';
-        } catch(e) {
-            alert('解码失败：' + e.message);
+        // ----------------- 1. 周累计用户数据定义 -----------------
+        const rawLogs = [
+            "2025-07-22 08:34:41", "2025-07-22 08:38:08", "2025-07-22 13:45:17", "2025-07-22 20:43:58", 
+            "2025-07-23 09:38:39", "2025-07-23 16:10:31", "2025-07-24 09:44:02", "2025-07-24 12:58:23", 
+            "2025-07-24 21:03:56", "2025-07-25 19:46:59", "2025-07-25 20:44:13", "2025-07-26 08:38:10", 
+            "2025-07-26 21:16:54", "2025-07-27 15:56:27", "2025-07-27 19:26:42", "2025-07-27 19:28:51", 
+            "2025-07-27 19:36:57", "2025-08-03 15:30:05", "2025-08-06 08:37:07", "2025-08-06 09:09:29", 
+            "2025-08-06 16:08:56", "2025-08-06 16:55:45", "2025-08-06 17:00:17", "2025-08-06 19:25:17", 
+            "2025-08-06 20:49:12", "2025-08-07 09:52:36", "2025-08-07 14:42:53", "2025-08-07 14:47:14", 
+            "2025-08-07 15:09:29", "2025-08-11 15:15:02", "2025-08-12 14:17:29", "2025-08-17 08:23:18", 
+            "2025-08-17 08:38:14", "2025-08-21 08:10:45", "2025-08-25 13:19:27", "2025-08-25 22:30:10", 
+            "2025-08-27 13:22:45", "2025-08-29 12:16:08", "2025-08-29 16:26:34", "2025-08-30 13:08:51", 
+            "2025-09-01 16:19:44", "2025-09-01 22:53:02", "2025-09-04 08:18:37", "2025-09-05 22:55:27", 
+            "2025-09-06 18:32:25", "2025-09-06 19:34:16", "2025-09-07 14:11:28", "2025-09-11 18:35:37", 
+            "2025-09-13 14:51:29", "2025-09-13 18:43:01", "2025-09-13 21:34:14", "2025-09-14 09:48:44", 
+            "2025-09-14 10:00:20", "2025-09-18 22:43:53", "2025-09-19 22:13:15", "2025-09-20 14:46:26", 
+            "2025-09-20 20:42:06", "2025-09-20 21:24:59", "2025-09-20 23:56:39", "2025-09-21 10:06:32", 
+            "2025-09-24 22:15:33", "2025-09-30 22:58:22", "2025-09-30 23:01:36", "2025-10-01 12:02:51", 
+            "2025-10-01 12:22:31", "2025-10-01 12:28:08", "2025-10-02 21:41:20", "2025-10-03 11:38:11", 
+            "2025-10-04 14:44:02", "2025-10-05 18:15:14", "2025-10-05 21:27:03", "2025-10-06 12:12:20", 
+            "2025-10-06 12:24:20", "2025-10-06 12:25:56", "2025-10-06 12:59:30", "2025-10-06 13:43:02", 
+            "2025-10-06 15:13:05", "2025-10-06 15:31:05", "2025-10-06 16:20:43", "2025-10-06 16:24:19", 
+            "2025-10-06 16:31:28", "2025-10-06 16:38:57", "2025-10-06 17:39:08", "2025-10-06 22:59:54", 
+            "2025-10-07 19:42:33", "2025-10-11 18:56:30", "2025-10-11 19:25:50", "2025-10-11 21:25:05", 
+            "2025-10-11 21:46:03", "2025-10-12 09:05:52", "2025-10-12 12:21:28", "2025-10-12 22:59:04", 
+            "2025-10-12 23:18:12", "2025-10-13 18:01:21", "2025-10-14 15:08:39", "2025-10-14 15:12:22", 
+            "2025-10-14 22:19:31", "2025-10-15 15:46:11", "2025-10-15 15:51:25", "2025-10-16 09:21:06", 
+            "2025-10-16 13:57:53", "2025-10-17 09:27:02", "2025-10-18 11:17:06", "2025-10-18 11:18:20", 
+            "2025-10-18 11:58:53", "2025-10-18 12:00:31", "2025-10-18 14:12:35", "2025-10-18 20:07:28", 
+            "2025-10-19 00:57:44", "2025-10-19 09:41:53", "2025-10-19 22:01:48", "2025-10-21 16:29:32", 
+            "2025-10-21 16:30:57", "2025-10-21 16:31:37", "2025-10-22 10:18:57", "2025-10-22 22:21:29", 
+            "2025-10-23 22:08:44", "2025-10-29 22:23:25", "2025-10-30 11:55:38", "2025-11-01 00:07:29", 
+            "2025-11-01 10:12:22", "2025-11-01 10:19:39", "2025-11-01 14:38:55", "2025-11-01 19:29:38", 
+            "2025-11-01 21:35:00", "2025-11-06 22:41:06", "2025-11-07 19:46:58", "2025-11-07 19:53:38", 
+            "2025-11-07 20:50:14", "2025-11-07 21:37:27", "2025-11-07 21:58:55", "2025-11-08 11:26:40", 
+            "2025-11-08 11:33:34", "2025-11-08 11:37:34", "2025-11-08 12:32:45", "2025-11-08 12:56:12", 
+            "2025-11-08 13:47:52", "2025-11-08 14:49:43", "2025-11-08 15:42:37", "2025-11-08 17:52:09", 
+            "2025-11-08 18:49:44", "2025-11-08 21:40:50", "2025-11-09 09:28:21", "2025-11-09 11:05:57", 
+            "2025-11-10 22:35:53", "2025-11-14 18:29:43", "2025-11-14 21:02:36", "2025-11-14 21:38:51", 
+            "2025-11-16 11:22:12", "2025-11-16 15:53:39", "2025-11-16 20:48:28", "2025-11-22 10:38:56", 
+            "2025-11-22 18:48:57", "2025-11-22 19:37:05", "2025-11-23 00:31:55", "2025-11-23 20:45:16", 
+            "2025-11-25 20:24:23", "2025-11-28 14:34:25", "2025-11-29 23:04:38", "2025-12-02 20:31:31", 
+            "2025-12-04 22:08:54", "2025-12-05 12:45:19", "2025-12-06 08:59:09", "2025-12-06 20:25:02", 
+            "2025-12-07 01:09:08", "2025-12-07 12:39:17", "2025-12-14 14:00:14", "2025-12-14 14:01:25", 
+            "2025-12-14 14:01:54", "2025-12-14 14:35:18", "2025-12-14 22:26:19", "2025-12-17 22:30:52", 
+            "2025-12-18 09:57:11", "2025-12-19 21:55:02", "2025-12-19 22:31:39", "2025-12-20 19:30:05", 
+            "2025-12-20 21:02:43", "2025-12-21 12:08:46", "2025-12-22 14:24:28", "2025-12-22 16:16:51", 
+            "2025-12-23 15:27:04", "2025-12-24 09:23:22", "2025-12-24 16:37:23", "2025-12-25 15:08:16", 
+            "2025-12-25 22:14:51", "2025-12-26 12:29:02", "2025-12-27 12:37:04", "2025-12-28 10:54:45", 
+            "2025-12-28 12:08:28", "2025-12-28 12:32:34", "2025-12-28 12:38:59", "2025-12-28 14:32:39", 
+            "2025-12-31 20:26:27", "2026-01-01 00:27:48", "2026-01-01 09:03:54", "2026-01-01 11:03:59", 
+            "2026-01-01 16:33:27", "2026-01-01 17:23:45", "2026-01-01 21:47:18", "2026-01-02 12:15:20", 
+            "2026-01-02 23:27:41", "2026-01-03 14:25:30", "2026-01-06 20:29:14", "2026-01-07 18:13:17", 
+            "2026-01-07 22:37:41", "2026-01-08 09:28:52", "2026-01-10 12:57:26", "2026-01-10 19:49:41", 
+            "2026-01-10 21:06:58", "2026-01-15 12:05:23", "2026-01-16 20:04:25", "2026-01-17 10:54:32", 
+            "2026-01-17 11:13:52", "2026-01-18 00:11:06", "2026-01-18 18:10:17", "2026-01-18 20:57:26", 
+            "2026-01-18 22:09:52", "2026-01-19 07:34:05", "2026-01-19 10:40:51", "2026-01-19 10:57:30", 
+            "2026-01-19 17:34:50", "2026-01-23 19:24:47", "2026-01-24 19:16:18", "2026-01-24 20:49:07", 
+            "2026-01-24 22:06:03", "2026-01-24 23:53:51", "2026-01-25 19:15:19", "2026-01-25 23:11:50", 
+            "2026-01-26 14:18:40", "2026-01-26 22:59:41", "2026-01-29 15:11:56", "2026-01-29 22:30:32", 
+            "2026-01-29 22:51:09", "2026-01-31 10:56:23", "2026-01-31 12:24:16", "2026-01-31 13:12:55", 
+            "2026-01-31 13:36:23", "2026-01-31 15:40:39", "2026-01-31 19:49:20", "2026-01-31 19:57:17", 
+            "2026-02-01 09:54:19", "2026-02-01 11:01:17", "2026-02-01 12:44:18", "2026-02-04 20:54:19", 
+            "2026-02-04 22:44:08", "2026-02-05 14:51:51", "2026-02-06 08:44:32", "2026-02-06 21:59:18", 
+            "2026-02-07 15:51:38", "2026-02-07 15:58:21", "2026-02-07 18:18:19", "2026-02-07 18:20:48", 
+            "2026-02-07 23:18:12", "2026-02-07 23:30:04", "2026-02-08 19:01:59", "2026-02-08 20:13:20", 
+            "2026-02-09 10:43:04", "2026-02-09 18:28:37", "2026-02-10 10:26:11", "2026-02-10 14:45:23", 
+            "2026-02-10 17:29:38", "2026-02-11 18:47:50", "2026-02-12 12:22:37", "2026-02-12 13:53:27", 
+            "2026-02-12 17:22:16", "2026-02-12 18:22:31", "2026-02-12 18:35:45", "2026-02-12 18:40:28", 
+            "2026-02-12 21:06:45", "2026-02-13 08:57:16", "2026-02-13 09:09:16", "2026-02-13 09:18:18", 
+            "2026-02-13 09:32:06", "2026-02-13 10:18:39", "2026-02-13 10:54:21", "2026-02-13 11:24:24", 
+            "2026-02-13 18:25:39", "2026-02-13 20:23:07", "2026-02-13 22:10:11", "2026-02-14 16:10:26", 
+            "2026-02-14 16:17:19", "2026-02-14 20:07:59", "2026-02-17 19:12:25", "2026-02-18 09:53:09", 
+            "2026-02-18 10:40:58", "2026-02-18 22:20:29", "2026-02-18 22:40:22", "2026-02-18 23:07:49", 
+            "2026-02-18 23:08:35", "2026-02-19 11:03:42", "2026-02-19 12:24:42", "2026-02-21 09:24:10", 
+            "2026-02-21 18:05:34", "2026-02-23 20:01:10", "2026-02-23 20:04:40", "2026-02-23 20:10:51", 
+            "2026-02-23 20:57:20", "2026-02-23 20:57:47", "2026-02-25 12:47:45", "2026-02-25 12:50:39", 
+            "2026-02-25 13:33:04", "2026-02-25 14:37:15", "2026-02-26 15:16:02", "2026-02-26 22:17:41", 
+            "2026-02-27 14:42:27", "2026-02-28 13:46:47", "2026-02-28 13:48:36", "2026-03-01 15:47:03", 
+            "2026-03-01 19:38:12", "2026-03-02 20:40:20", "2026-03-02 23:05:42", "2026-03-03 13:17:42", 
+            "2026-03-03 15:56:54", "2026-03-03 16:51:03", "2026-03-03 17:19:12", "2026-03-03 17:50:58", 
+            "2026-03-03 20:33:12", "2026-03-03 20:48:26", "2026-03-04 10:28:39", "2026-03-06 20:40:31", 
+            "2026-03-06 20:43:19", "2026-03-06 20:45:36", "2026-03-06 22:24:37", "2026-03-07 14:05:16", 
+            "2026-03-07 15:35:38", "2026-03-07 16:40:25", "2026-03-07 18:03:23", "2026-03-08 09:19:40", 
+            "2026-03-08 10:45:12", "2026-03-08 13:31:43", "2026-03-09 18:24:16", "2026-03-12 22:31:02", 
+            "2026-03-13 00:13:38", "2026-03-14 18:34:06", "2026-03-14 21:17:41", "2026-03-15 10:02:49", 
+            "2026-03-15 19:25:42", "2026-03-17 06:56:39", "2026-03-20 07:30:38", "2026-03-21 09:50:10", 
+            "2026-03-21 10:05:34", "2026-03-21 11:59:31", "2026-03-21 13:40:43", "2026-03-21 18:13:28", 
+            "2026-03-21 20:03:45", "2026-03-21 20:56:27", "2026-03-21 21:41:42", "2026-03-23 18:04:16", 
+            "2026-03-24 22:01:01", "2026-03-25 16:26:01", "2026-03-27 17:27:16", "2026-03-27 18:23:13", 
+            "2026-03-28 08:56:14", "2026-03-28 14:06:34", "2026-03-28 14:38:13", "2026-03-28 14:49:01", 
+            "2026-03-28 19:54:00", "2026-03-28 20:42:47", "2026-03-28 21:20:56", "2026-03-28 22:26:37", 
+            "2026-03-29 09:56:42", "2026-03-29 10:42:55", "2026-03-29 11:14:02", "2026-03-29 12:25:12", 
+            "2026-03-29 16:40:27", "2026-03-30 12:49:53", "2026-04-01 15:08:33", "2026-04-02 11:58:22", 
+            "2026-04-03 19:15:28", "2026-04-03 20:35:11", "2026-04-04 11:09:40", "2026-04-04 11:49:36", 
+            "2026-04-04 12:06:33", "2026-04-04 12:52:30", "2026-04-04 14:10:35", "2026-04-04 15:47:04", 
+            "2026-04-04 16:07:05", "2026-04-04 18:21:03", "2026-04-04 18:35:50", "2026-04-05 09:47:51", 
+            "2026-04-05 16:11:07", "2026-04-05 16:20:46", "2026-04-05 16:31:09", "2026-04-05 16:40:14", 
+            "2026-04-05 17:14:06", "2026-04-05 17:16:14", "2026-04-05 21:52:03", "2026-04-05 21:56:56", 
+            "2026-04-06 12:32:21", "2026-04-06 22:16:50", "2026-04-09 16:47:04", "2026-04-09 21:56:29", 
+            "2026-04-10 19:12:20", "2026-04-10 22:18:14", "2026-04-11 08:20:48", "2026-04-11 17:23:00", 
+            "2026-04-11 18:04:48", "2026-04-11 18:07:47", "2026-04-11 18:36:03", "2026-04-11 22:44:18", 
+            "2026-04-11 22:49:09", "2026-04-12 09:03:01", "2026-04-13 12:34:12", "2026-04-13 19:25:25", 
+            "2026-04-18 10:42:44", "2026-04-18 14:14:46", "2026-04-18 15:58:53", "2026-04-18 16:13:41", 
+            "2026-04-18 20:34:51", "2026-04-18 22:14:40", "2026-04-19 11:11:15", "2026-04-19 11:26:56", 
+            "2026-04-19 21:38:12", "2026-04-19 22:25:44", "2026-04-19 22:55:11", "2026-04-21 15:58:37", 
+            "2026-04-23 20:28:37", "2026-04-23 20:33:46", "2026-04-25 16:29:42", "2026-04-25 17:21:47", 
+            "2026-04-25 18:01:15", "2026-04-26 22:53:28", "2026-04-27 12:50:03", "2026-04-27 21:37:25", 
+            "2026-04-28 12:51:46", "2026-04-28 15:01:58", "2026-04-28 22:26:58", "2026-04-30 09:11:56", 
+            "2026-04-30 18:31:12", "2026-04-30 19:30:24", "2026-04-30 21:02:35", "2026-05-01 09:31:11", 
+            "2026-05-01 11:16:11", "2026-05-01 12:50:41", "2026-05-01 17:22:14", "2026-05-02 08:52:35", 
+            "2026-05-02 10:04:40", "2026-05-02 16:52:28", "2026-05-02 17:35:14", "2026-05-02 18:06:58", 
+            "2026-05-02 18:09:44", "2026-05-02 18:09:53", "2026-05-02 18:11:25", "2026-05-02 18:19:00", 
+            "2026-05-02 19:02:48", "2026-05-02 19:03:59", "2026-05-03 12:34:16", "2026-05-03 13:21:22", 
+            "2026-05-03 13:23:21", "2026-05-03 14:14:55", "2026-05-03 14:17:26", "2026-05-03 14:19:36", 
+            "2026-05-04 10:02:41", "2026-05-04 12:14:31", "2026-05-04 13:43:43", "2026-05-04 15:30:18", 
+            "2026-05-04 15:38:08", "2026-05-04 15:49:58", "2026-05-04 15:57:37", "2026-05-04 19:23:17", 
+            "2026-05-05 09:52:31", "2026-05-05 10:02:17", "2026-05-07 18:25:25", "2026-05-08 12:51:24", 
+            "2026-05-09 14:32:28", "2026-05-09 15:09:44", "2026-05-09 19:02:22", "2026-05-09 23:47:30", 
+            "2026-05-10 10:13:29", "2026-05-10 10:14:13", "2026-05-10 11:17:17", "2026-05-10 15:25:15", 
+            "2026-05-10 21:23:57", "2026-05-11 13:22:02", "2026-05-11 13:27:53", "2026-05-11 14:15:53", 
+            "2026-05-13 15:41:43", "2026-05-13 15:59:38", "2026-05-16 11:49:21", "2026-05-16 21:24:45", 
+            "2026-05-16 21:24:49", "2026-05-16 21:52:32", "2026-05-18 10:08:16", "2026-05-18 10:37:04", 
+            "2026-05-18 17:01:59", "2026-05-20 15:09:33", "2026-05-20 16:12:23", "2026-05-21 22:29:37", 
+            "2026-05-22 07:31:58", "2026-05-22 16:15:22", "2026-05-22 22:01:37", "2026-05-23 17:04:28", 
+            "2026-05-23 17:49:33", "2026-05-23 17:52:09", "2026-05-23 22:03:16", "2026-05-23 22:32:29", 
+            "2026-05-24 13:26:22", "2026-05-24 16:56:30", "2026-05-28 09:32:07", "2026-05-28 14:59:07", 
+            "2026-05-28 22:18:48", "2026-05-28 22:21:20", "2026-05-28 22:22:26", "2026-05-28 22:27:11", 
+            "2026-05-29 17:11:33", "2026-05-30 17:12:40", "2026-05-30 18:55:54", "2026-05-30 19:23:50", 
+            "2026-05-30 21:02:28", "2026-05-30 21:31:35", "2026-05-30 22:54:23", "2026-05-31 08:05:33", 
+            "2026-06-01 22:09:45", "2026-06-02 10:27:46", "2026-06-02 11:58:32", "2026-06-02 17:11:27", 
+            "2026-06-02 17:14:45", "2026-06-03 15:21:10", "2026-06-03 16:08:11", "2026-06-03 22:17:45", 
+            "2026-06-03 22:37:09", "2026-06-04 15:07:19", "2026-06-04 22:13:35", "2026-06-05 22:08:44", 
+            "2026-06-05 22:16:22", "2026-06-06 10:03:11", "2026-06-06 10:18:32", "2026-06-06 11:00:33", 
+            "2026-06-06 14:01:02", "2026-06-06 14:11:15", "2026-06-06 15:27:05", "2026-06-06 16:51:33", 
+            "2026-06-06 17:02:22", "2026-06-06 17:31:11", "2026-06-06 17:40:14", "2026-06-06 18:10:39", 
+            "2026-06-06 18:42:38", "2026-06-06 18:45:48", "2026-06-06 19:31:28", "2026-06-06 20:21:45", 
+            "2026-06-06 20:26:43", "2026-06-06 20:58:32", "2026-06-06 21:19:09", "2026-06-06 21:38:45", 
+            "2026-06-06 22:01:48", "2026-06-06 22:08:21", "2026-06-06 22:27:48", "2026-06-06 23:22:43", 
+            "2026-06-07 08:08:54", "2026-06-07 12:59:28", "2026-06-07 13:15:36", "2026-06-07 14:07:08", 
+            "2026-06-07 15:11:34", "2026-06-07 15:47:04", "2026-06-07 17:55:25", "2026-06-07 19:43:32", 
+            "2026-06-07 19:45:07", "2026-06-07 19:51:41", "2026-06-08 08:42:52", "2026-06-08 11:49:57", 
+            "2026-06-08 13:42:22", "2026-06-08 14:42:36", "2026-06-08 16:34:28", "2026-06-08 17:14:10", 
+            "2026-06-08 22:56:28", "2026-06-09 09:38:09", "2026-06-09 10:01:45", "2026-06-09 10:43:02", 
+            "2026-06-09 10:53:46", "2026-06-09 12:40:01", "2026-06-09 12:47:01", "2026-06-09 12:47:35", 
+            "2026-06-09 12:50:07", "2026-06-09 12:51:10", "2026-06-09 13:07:12", "2026-06-09 13:09:00", 
+            "2026-06-09 13:21:13", "2026-06-09 13:58:06", "2026-06-09 14:44:20", "2026-06-09 15:01:43", 
+            "2026-06-09 15:12:28", "2026-06-09 16:08:17", "2026-06-09 19:58:49", "2026-06-09 22:46:41", 
+            "2026-06-09 23:14:41", "2026-06-10 11:18:01", "2026-06-10 11:42:07", "2026-06-10 11:51:33", 
+            "2026-06-10 11:53:34", "2026-06-10 12:07:02", "2026-06-10 12:46:35", "2026-06-10 13:44:04", 
+            "2026-06-10 14:15:59", "2026-06-10 14:47:51", "2026-06-10 14:59:04", "2026-06-10 15:57:06", 
+            "2026-06-10 16:10:37", "2026-06-10 17:14:20", "2026-06-10 18:18:49", "2026-06-10 21:20:07", 
+            "2026-06-10 21:56:22", "2026-06-10 22:24:20", "2026-06-11 05:42:17", "2026-06-11 10:40:14", 
+            "2026-06-11 11:58:44", "2026-06-11 15:53:07", "2026-06-11 18:15:18", "2026-06-11 20:45:11", 
+            "2026-06-12 06:56:08", "2026-06-12 16:36:51", "2026-06-13 08:56:54", "2026-06-13 11:13:38", 
+            "2026-06-13 11:45:00", "2026-06-13 11:47:40", "2026-06-13 17:43:22", "2026-06-13 18:05:24", 
+            "2026-06-13 18:39:13", "2026-06-13 18:44:53", "2026-06-13 19:25:33", "2026-06-13 19:34:35", 
+            "2026-06-13 20:21:25", "2026-06-13 20:23:45", "2026-06-13 21:38:52", "2026-06-13 21:52:13", 
+            "2026-06-13 22:06:41", "2026-06-14 00:07:09", "2026-06-14 01:31:39", "2026-06-14 09:27:03", 
+            "2026-06-14 12:35:49", "2026-06-14 12:54:58", "2026-06-14 18:54:22", "2026-06-14 21:03:00", 
+            "2026-06-14 23:05:57", "2026-06-14 23:07:53", "2026-06-14 23:21:01", "2026-06-14 23:35:01", 
+            "2026-06-14 23:36:03", "2026-06-14 23:38:15", "2026-06-14 23:42:12", "2026-06-14 23:50:35", 
+            "2026-06-14 23:56:36", "2026-06-15 00:00:47", "2026-06-15 00:04:33", "2026-06-15 00:08:28", 
+            "2026-06-15 10:49:39", "2026-06-15 11:34:55", "2026-06-15 19:51:49", "2026-06-15 22:24:33", 
+            "2026-06-15 22:29:23", "2026-06-15 22:32:33", "2026-06-15 22:36:16", "2026-06-16 10:01:59", 
+            "2026-06-16 20:49:32", "2026-06-16 22:38:11", "2026-06-17 13:59:21", "2026-06-17 15:28:31", 
+            "2026-06-17 16:15:11", "2026-06-17 16:20:12", "2026-06-17 22:07:01", "2026-06-18 08:40:01", 
+            "2026-06-18 09:03:13", "2026-06-18 10:37:08", "2026-06-18 10:37:46", "2026-06-18 14:12:04", 
+            "2026-06-18 17:27:01", "2026-06-18 20:20:02", "2026-06-18 20:42:33", "2026-06-18 22:30:39", 
+            "2026-06-18 23:27:58", "2026-06-18 23:35:52", "2026-06-19 10:15:16", "2026-06-19 10:51:08", 
+            "2026-06-19 11:29:28", "2026-06-19 12:07:20", "2026-06-19 12:47:32", "2026-06-19 17:24:51", 
+            "2026-06-19 17:25:00", "2026-06-19 23:41:39", "2026-06-19 23:53:23"
+        ];
+
+        // ----------------- 自然周次解析 -----------------
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return { year: d.getUTCFullYear(), week: weekNo };
         }
-    }
+
+        function getWeekRangeString(year, week) {
+            const simple = new Date(year, 0, 1 + (week - 1) * 7);
+            const dow = simple.getDay();
+            const ISOweekStart = simple;
+            if (dow <= 4) {
+                ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+            } else {
+                ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+            }
+            const ISOweekEnd = new Date(ISOweekStart);
+            ISOweekEnd.setDate(ISOweekStart.getDate() + 6);
+            return `${ISOweekStart.getFullYear()}/${String(ISOweekStart.getMonth()+1).padStart(2,'0')}/${String(ISOweekStart.getDate()).padStart(2,'0')} ~ ${String(ISOweekEnd.getMonth()+1).padStart(2,'0')}/${String(ISOweekEnd.getDate()).padStart(2,'0')}`;
+        }
+
+        // 解析并建立排序时间戳
+        let parsedDates = rawLogs.map(str => new Date(str.replace(/\s+/g, ' ').trim())).sort((a, b) => a - b);
+        
+        let weeklyMap = {};
+        let currentCursor = new Date(parsedDates[0]);
+        while (currentCursor <= parsedDates[parsedDates.length - 1]) {
+            const { year, week } = getWeekNumber(currentCursor);
+            const key = `${year}-W${String(week).padStart(2, '0')}`;
+            if (!weeklyMap[key]) {
+                weeklyMap[key] = { key: key, count: 0, range: getWeekRangeString(year, week) };
+            }
+            currentCursor.setDate(currentCursor.getDate() + 1);
+        }
+
+        parsedDates.forEach(date => {
+            const { year, week } = getWeekNumber(date);
+            const key = `${year}-W${String(week).padStart(2, '0')}`;
+            if (weeklyMap[key]) weeklyMap[key].count += 1;
+        });
+
+        // 整理时间序列
+        let runningTotal = 0;
+        const weeklyDataset = Object.values(weeklyMap).sort((a, b) => a.key.localeCompare(b.key)).map(item => {
+            runningTotal += item.count;
+            return { ...item, cumulative: runningTotal };
+        });
+
+        // ----------------- 2. 交互叙事剧本 (Story Scripts) -----------------
+        const storyChapters = [
+            {
+                title: "1. 破局起航：稳步探索",
+                range: "2025年7月 ~ 2025年9月",
+                desc: "项目初上线，系统开始积累首批种子用户。累计用户量从 17 人平稳增长至 52 人，主要依靠移动端客户端冷启动测试。",
+                targetIndex: 0, 
+                cameraPos: { x: -30, y: 15, z: 25 },
+                lookAt: { x: -30, y: 2, z: 0 }
+            },
+            {
+                title: "2. 蓄势爆发：深秋首波高增",
+                range: "2025年10月 ~ 2025年11月",
+                desc: "在 10月6日 附近出现了单周新增多人的小幅波峰，系统进入第二阶段，此时总量已然突破了 140 人大关，用户黏性初步显现。",
+                targetIndex: 14,
+                cameraPos: { x: -10, y: 20, z: 30 },
+                lookAt: { x: -10, y: 6, z: 0 }
+            },
+            {
+                title: "3. 稳健跨年：突破两百大关",
+                range: "2025年12月 ~ 2026年3月",
+                desc: "跨越元旦和春节周期，经历了一段稳定的自然线性成长。用户总量顺利跃迁至 270 人，客户端复合协议日渐成熟。",
+                targetIndex: 28,
+                cameraPos: { x: 10, y: 25, z: 30 },
+                lookAt: { x: 10, y: 12, z: 0 }
+            },
+            {
+                title: "4. 年中喷薄：冲刺顶峰",
+                range: "2026年4月 ~ 2026年6月",
+                desc: "进入暑期及年中爆发期。特别是 2026年6月第1周 单周增长了 27 人，在 6月中旬 累计用户成功到达 414 人的最高峰！",
+                targetIndex: weeklyDataset.length - 1,
+                cameraPos: { x: 35, y: 30, z: 25 },
+                lookAt: { x: 30, y: 22, z: 0 }
+            }
+        ];
+
+        let currentStoryIdx = 0;
+
+        // ----------------- 3. Three.js 三维渲染设置 -----------------
+        let scene, camera, renderer, controls;
+        let pathLine, glowingMesh, pointsGroup, gridHelper;
+        const totalPoints = weeklyDataset.length;
+
+        // X轴：-40 到 40 (映射时间轴)
+        // Y轴：0 到 25 (映射累计总量，总量 414 映射到 24 左右)
+        // Z轴：保持 0 (一维时间折线)
+        function mapDataTo3D(index, cumulative) {
+            const x = -40 + (index / (totalPoints - 1)) * 80;
+            const y = (cumulative / 414) * 24; 
+            const z = 0;
+            return new THREE.Vector3(x, y, z);
+        }
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+
+            // 场景初始化
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x080A0F);
+            scene.fog = new THREE.FogExp2(0x080A0F, 0.015);
+
+            // 摄像机初始化
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(-20, 35, 65);
+
+            // 渲染器初始化
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // 轨道控制器
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05; // 避免穿透地平线
+            controls.minDistance = 15;
+            controls.maxDistance = 120;
+
+            // 光源布置
+            const ambientLight = new THREE.AmbientLight(0x1F2A3F, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0x60A5FA, 1.5);
+            dirLight.position.set(20, 40, 20);
+            scene.add(dirLight);
+
+            const pointLight = new THREE.PointLight(0x3B82F6, 2, 50);
+            pointLight.position.set(0, 15, 10);
+            scene.add(pointLight);
+
+            // 3D 底盘科技网格
+            gridHelper = new THREE.GridHelper(120, 60, 0x1E293B, 0x0F172A);
+            gridHelper.position.y = -0.1;
+            scene.add(gridHelper);
+
+            // 绘制主干时间数据线与粒子
+            buildDataGeometry();
+
+            // 首秀动画
+            playGrowthAnimation();
+
+            // 绑定事件
+            window.addEventListener('resize', onWindowResize);
+            setupStoryUI();
+        }
+
+        // ----------------- 4. 建立 3D 数据实体几何 -----------------
+        function buildDataGeometry() {
+            pointsGroup = new THREE.Group();
+            scene.add(pointsGroup);
+
+            // 提取所有的三维映射坐标点
+            const curvePoints = [];
+            weeklyDataset.forEach((item, idx) => {
+                const pos = mapDataTo3D(idx, item.cumulative);
+                curvePoints.push(pos);
+
+                // 创建水晶球式数据节点球
+                const isHighlight = [0, 14, 28, weeklyDataset.length-1].includes(idx);
+                const sphereGeo = new THREE.SphereGeometry(isHighlight ? 0.6 : 0.35, 16, 16);
+                const sphereMat = new THREE.MeshPhongMaterial({
+                    color: isHighlight ? 0x60A5FA : 0x3B82F6,
+                    emissive: isHighlight ? 0x2563EB : 0x1E40AF,
+                    shininess: 100,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+                sphereMesh.position.copy(pos);
+                
+                // 附加属性
+                sphereMesh.userData = { 
+                    weekKey: item.key, 
+                    cumulative: item.cumulative,
+                    range: item.range,
+                    count: item.count
+                };
+
+                pointsGroup.add(sphereMesh);
+            });
+
+            // 三维多点平滑样条线
+            const curve = new THREE.CatmullRomCurve3(curvePoints);
+            
+            // 采用带管径的 Tube 管道几何体，体现 3D 光轨厚重感
+            const tubeGeo = new THREE.TubeGeometry(curve, 120, 0.25, 8, false);
+            const tubeMat = new THREE.MeshPhongMaterial({
+                color: 0x3B82F6,
+                emissive: 0x1D4ED8,
+                transparent: true,
+                opacity: 0.85,
+                shininess: 80
+            });
+            pathLine = new THREE.Mesh(tubeGeo, tubeMat);
+            scene.add(pathLine);
+
+            // 外围发光晕圈管线（稍宽，更透亮）
+            const glowGeo = new THREE.TubeGeometry(curve, 120, 0.55, 8, false);
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: 0x60A5FA,
+                transparent: true,
+                opacity: 0.22,
+                wireframe: true
+            });
+            glowingMesh = new THREE.Mesh(glowGeo, glowMat);
+            scene.add(glowingMesh);
+
+            // 3D 浮雕柱状投影（新增量投影到地面上作为倒影）
+            weeklyDataset.forEach((item, idx) => {
+                const pos = mapDataTo3D(idx, item.cumulative);
+                const shadowHeight = (item.count / 27) * 8; // 新增量高度投影 
+                const cylinderGeo = new THREE.CylinderGeometry(0.08, 0.08, shadowHeight, 4);
+                const cylinderMat = new THREE.MeshBasicMaterial({
+                    color: 0x1E293B,
+                    transparent: true,
+                    opacity: 0.35
+                });
+                const cylinder = new THREE.Mesh(cylinderGeo, cylinderMat);
+                // 站立在地面上
+                cylinder.position.set(pos.x, shadowHeight / 2, pos.z);
+                scene.add(cylinder);
+            });
+        }
+
+        // ----------------- 5. 动画播放引擎 (TWEEN) -----------------
+        function playGrowthAnimation() {
+            // 让管道线和节点球具有“生长”物理动效
+            pathLine.scale.set(0, 1, 1);
+            glowingMesh.scale.set(0, 1, 1);
+            pointsGroup.children.forEach(child => {
+                child.scale.set(0, 0, 0);
+            });
+
+            // 1. 光轨伸展
+            new TWEEN.Tween(pathLine.scale)
+                .to({ x: 1 }, 2200)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .start();
+
+            new TWEEN.Tween(glowingMesh.scale)
+                .to({ x: 1 }, 2200)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .start();
+
+            // 2. 节点球像雨后春笋般依次冒出
+            pointsGroup.children.forEach((mesh, index) => {
+                new TWEEN.Tween(mesh.scale)
+                    .to({ x: 1, y: 1, z: 1 }, 800)
+                    .delay(200 + (index / totalPoints) * 1800)
+                    .easing(TWEEN.Easing.Back.Out)
+                    .start();
+            });
+
+            // 同时恢复镜头到总览全貌
+            resetCamera();
+        }
+
+        // 平滑移动相机视角
+        function tweenCamera(targetPos, targetLookAt, duration = 1800) {
+            // 禁止用户在过渡期间频繁强行操作
+            controls.enabled = false;
+
+            // 摄像机位置过渡
+            new TWEEN.Tween(camera.position)
+                .to(targetPos, duration)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .start();
+
+            // 轨道中心点过渡
+            new TWEEN.Tween(controls.target)
+                .to(targetLookAt, duration)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .onComplete(() => {
+                    controls.enabled = true;
+                })
+                .start();
+        }
+
+        function resetCamera() {
+            tweenCamera({ x: -10, y: 25, z: 65 }, { x: 0, y: 10, z: 0 }, 2000);
+        }
+
+        // ----------------- 6. 叙事导航器控制器 (Story Board) -----------------
+        function setupStoryUI() {
+            const dotsContainer = document.getElementById('story-dots');
+            dotsContainer.innerHTML = '';
+            
+            storyChapters.forEach((_, idx) => {
+                const dot = document.createElement('button');
+                dot.className = `w-2 h-2 rounded-full transition-all duration-300 ${idx === 0 ? 'bg-blue-400 w-5' : 'bg-white/20'}`;
+                dot.onclick = () => jumpToStory(idx);
+                dotsContainer.appendChild(dot);
+            });
+
+            updateStoryContent();
+        }
+
+        function updateStoryContent() {
+            const story = storyChapters[currentStoryIdx];
+            
+            // 文本淡入淡出动画过渡
+            const title = document.getElementById('story-title');
+            const range = document.getElementById('story-range');
+            const desc = document.getElementById('story-desc');
+            const progress = document.getElementById('story-progress');
+
+            // 物理赋值
+            title.textContent = story.title;
+            range.textContent = `时间周期: ${story.range}`;
+            desc.textContent = story.desc;
+            progress.textContent = `${currentStoryIdx + 1} / ${storyChapters.length}`;
+
+            // 圆点激活态切换
+            const dots = document.getElementById('story-dots').children;
+            for (let i = 0; i < dots.length; i++) {
+                if (i === currentStoryIdx) {
+                    dots[i].className = "w-2 h-2 rounded-full bg-blue-400 w-5 transition-all duration-300";
+                } else {
+                    dots[i].className = "w-2 h-2 rounded-full bg-white/20 transition-all duration-300";
+                }
+            }
+
+            // 更新导航按钮状态
+            document.getElementById('btn-prev').disabled = currentStoryIdx === 0;
+            const nextBtn = document.getElementById('btn-next');
+            if (currentStoryIdx === storyChapters.length - 1) {
+                nextBtn.innerHTML = `再看一遍 <span class="material-symbols-outlined text-sm">replay</span>`;
+            } else {
+                nextBtn.innerHTML = `下一阶段 <span class="material-symbols-outlined text-sm">chevron_right</span>`;
+            }
+
+            // 执行 3D 摄像机聚焦平移
+            tweenCamera(story.cameraPos, story.lookAt);
+
+            // 耀眼高亮当前聚焦的 3D 节点
+            highlightDataNode(story.targetIndex);
+        }
+
+        function highlightDataNode(targetIndex) {
+            pointsGroup.children.forEach((mesh, idx) => {
+                if (idx === targetIndex) {
+                    mesh.material.color.setHex(0xF59E0B); // 金色高亮
+                    mesh.material.emissive.setHex(0xB45309);
+                    mesh.scale.set(1.5, 1.5, 1.5);
+                } else {
+                    const isHighlight = [0, 14, 28, weeklyDataset.length-1].includes(idx);
+                    mesh.material.color.setHex(isHighlight ? 0x60A5FA : 0x3B82F6);
+                    mesh.material.emissive.setHex(isHighlight ? 0x2563EB : 0x1E40AF);
+                    mesh.scale.set(1, 1, 1);
+                }
+            });
+        }
+
+        function nextStory() {
+            if (currentStoryIdx < storyChapters.length - 1) {
+                currentStoryIdx++;
+            } else {
+                currentStoryIdx = 0; // 循环
+            }
+            updateStoryContent();
+        }
+
+        function prevStory() {
+            if (currentStoryIdx > 0) {
+                currentStoryIdx--;
+                updateStoryContent();
+            }
+        }
+
+        function jumpToStory(idx) {
+            currentStoryIdx = idx;
+            updateStoryContent();
+        }
+
+        // ----------------- 7. 自适应与帧循环 -----------------
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // 渲染主频循环
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            TWEEN.update();
+            controls.update();
+
+            // 主动增加部分缓和动态——微幅转动光轨外圈，营造离子流动感
+            if (glowingMesh) {
+                glowingMesh.rotation.x = Math.sin(time * 0.0005) * 0.03;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 页面资源载入完毕启动
+        window.onload = function() {
+            init3D();
+            animate();
+        };
     </script>
 </body>
 </html>
+
