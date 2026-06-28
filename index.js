@@ -1,7 +1,7 @@
 (() => {
     window.API_BASE_URL = localStorage.getItem("apiBaseUrl") || "https://zyapi.loshop.com.cn";
     window.API_BASE_BASE_URL = localStorage.getItem("apiBaseOrigin") || "https://zyapi.loshop.com.cn";
-    window.proxyBaseUrl = localStorage.getItem("apiBaseUrl") ? localStorage.getItem("apiBaseUrl").replace("//", "//picAgent.") : "https://zytbdownloadagent.loshop.com.cn/download/";
+    window.proxyBaseUrl = "https://zytbdownloadagent.loshop.com.cn/download/";
     window.SHARE_SERVER = localStorage.getItem("shareServer") || "https://zytbshareapi.loshop.com.cn";
     window.proxyUrl = (url) => {
         const base = window.proxyBaseUrl;
@@ -678,7 +678,7 @@ async function loadPictures() {
 
         items.forEach(item => {
             const imgUrl = proxyImgSrc(item.picture);
-            const aUrl = "https://zyapi.loshop.com.cn/picAgent/" + encodeURIComponent(item.picture);
+            const aUrl = "https://zytbdownloadagent.loshop.com.cn/download/" + encodeURIComponent(item.picture);
 
             html += `
         <tr>
@@ -1421,7 +1421,6 @@ login_btn.onclick = async () => {
         // 更新全局变量
         window.API_BASE_URL = currentApiBaseUrl;
         window.API_BASE_BASE_URL = currentApiBaseUrl; // 用于判断是否使用 special 路径
-        window.proxyBaseUrl = currentApiBaseUrl.replace("//", "//picAgent.");
 
         // 只有省锡中（非自适应）才判断教师账号
         if (schoolSelect !== "other" && accountVal[0] !== "2") {
@@ -3070,7 +3069,7 @@ function renderCourseCards() {
         if (window.proxyBaseUrl) {
             coverUrl = proxyImgSrc(item.cover);
         } else {
-            coverUrl = "https://zyapi.loshop.com.cn/picAgent/" + item.cover;
+            coverUrl = "https://zytbdownloadagent.loshop.com.cn/download/" + item.cover;
         }
         const progress = item.progress || 0;
         const teacher = item.userName || "未知教师";
